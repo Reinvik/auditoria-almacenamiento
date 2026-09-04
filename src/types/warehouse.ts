@@ -45,10 +45,10 @@ export interface SlotData {
 
 export type DiscrepancyType = 
   | 'NONE'
-  | 'FALTA_FISICA'      // Sistémico ocupado, físico vacío
-  | 'SOBRA_FISICA'      // Sistémico vacío, físico ocupado
+  | 'FALTA_FISICA'        // Sistémico ocupado, faltan pallets (ej: Falta 1 de 2, Falta 2 de 2)
+  | 'SOBRA_FISICA'        // Físicamente hay más pallets
   | 'DIFERENCIA_CANTIDAD' // Distinta cantidad de pallets
-  | 'LOTE_DISTINTO'     // Lote o material no coincide
+  | 'LOTE_DISTINTO'       // Lote o material no coincide
   | 'OTRO';
 
 export interface AuditFinding {
@@ -56,6 +56,8 @@ export interface AuditFinding {
   rackId: number;
   systemPallets: number;
   physicalPallets: number;
+  differenceDetail: string; // ej: "Falta 1 de 2", "Falta 2 de 2", "Conforme (2 de 2)", "Sobra 1 (3 de 2)"
+  badgeLabel: string;       // ej: "FALTA 1/2", "FALTA 2/2", "SOBRA +1", "OK"
   systemMaterial?: string;
   physicalMaterial?: string;
   systemLote?: string;
@@ -71,4 +73,54 @@ export interface AislePair {
   name: string;
   leftRackId: number;
   rightRackId: number;
+}
+
+/**
+ * Calcula la etiqueta formal de diferencia (ej: "Falta 1 de 2", "Falta 2 de 2", "Conforme (2 de 2)").
+ */
+export function computeDifferenceLabel(
+  systemPallets: number,
+  physicalPallets: number,
+  discrepancyType?: DiscrepancyType
+): { differenceDetail: string; badgeLabel: string; type: DiscrepancyType } {
+  if (discrepancyType === 'LOTE_DISTINTO') {
+    return {
+      differenceDetail: 'Lote o Material distinto al sistémico',
+      badgeLabel: 'LOTE DIF',
+      type: 'LOTE_DISTINTO'
+    };
+  }
+
+  if (physicalPallets === systemPallets) {
+    return {
+      differenceDetail: systemPallets === 0 ? 'Conforme (Espacio Vacío)' : `Conforme (${systemPallets} de ${systemPallets})`,
+      badgeLabel: 'OK',
+      type: 'NONE'
+    };
+  }
+
+  if (physicalPallets < systemPallets) {
+    const missing = systemPallets - physicalPallets;
+    return {
+      differenceDetail: `Falta ${missing} de ${systemPallets}`,
+      badgeLabel: `FALTA ${missing}/${systemPallets}`,
+      type: 'FALTA_FISICA'
+    };
+  }
+
+  // physicalPallets > systemPallets
+  const extra = physicalPallets - systemPallets;
+  if (systemPallets === 0) {
+    return {
+      differenceDetail: `Sobra ${extra} pallet(s) en espacio vacío`,
+      badgeLabel: `SOBRA +${extra}`,
+      type: 'SOBRA_FISICA'
+    };
+  }
+
+  return {
+    differenceDetail: `Sobra ${extra} (${physicalPallets} de ${systemPallets})`,
+    badgeLabel: `SOBRA +${extra}`,
+    type: 'SOBRA_FISICA'
+  };
 }

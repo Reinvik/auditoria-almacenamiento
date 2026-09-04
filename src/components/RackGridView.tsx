@@ -48,7 +48,7 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
     return true;
   };
 
-  // Render audit badge on top of slot
+  // Render audit badge on top of slot with exact difference (FALTA 1/2, FALTA 2/2)
   const renderAuditBadge = (slot: SlotData) => {
     const finding = auditFindings.get(slot.ubicacion);
     if (!finding) return null;
@@ -62,47 +62,46 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
     }
     if (finding.discrepancyType === 'FALTA_FISICA') {
       return (
-        <span className="absolute top-1 right-1 px-1 py-0.2 rounded bg-rose-600 text-white flex items-center gap-0.5 text-[9px] font-black shadow-sm">
-          FALTA
+        <span className="absolute top-1 right-1 px-1.5 py-0.2 rounded bg-rose-600 text-white flex items-center gap-0.5 text-[9px] font-black shadow-sm tracking-tighter">
+          {finding.badgeLabel || 'FALTA'}
         </span>
       );
     }
     if (finding.discrepancyType === 'SOBRA_FISICA') {
       return (
-        <span className="absolute top-1 right-1 px-1 py-0.2 rounded bg-amber-500 text-slate-950 flex items-center gap-0.5 text-[9px] font-black shadow-sm">
-          SOBRA
+        <span className="absolute top-1 right-1 px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 flex items-center gap-0.5 text-[9px] font-black shadow-sm tracking-tighter">
+          {finding.badgeLabel || 'SOBRA'}
         </span>
       );
     }
     return (
-      <span className="absolute top-1 right-1 px-1 py-0.2 rounded bg-blue-600 text-white flex items-center gap-0.5 text-[9px] font-black shadow-sm">
-        DIF
+      <span className="absolute top-1 right-1 px-1.5 py-0.2 rounded bg-blue-600 text-white flex items-center gap-0.5 text-[9px] font-black shadow-sm tracking-tighter">
+        {finding.badgeLabel || 'DIF'}
       </span>
     );
   };
 
   // ══════════════════════════════════════════════════════════════════════════
-  // MODO 1: FORMATO AUDITORÍA (EXCEL OFICIAL CIAL)
-  // Idéntico a la planilla de auditoría: Col 1 = Módulo, Col 2..7 = Nivel 6 a 1
+  // MODO 1: FORMATO AUDITORÍA (EXCEL OFICIAL CIAL) - STICKY PARA MÓVIL
   // ══════════════════════════════════════════════════════════════════════════
   if (viewMode === 'audit_excel') {
     return (
-      <div className="w-full overflow-x-auto pb-8">
+      <div className="w-full overflow-x-auto pb-16 sm:pb-8">
         <div className="inline-block min-w-full align-middle">
-          <div className="bg-white p-3 rounded-2xl shadow-md border border-slate-200">
-            <table className="border-collapse text-center select-none mx-auto">
-              {/* Encabezado negro idéntico a Excel */}
+          <div className="bg-white p-2 sm:p-3 rounded-2xl shadow-md border border-slate-200">
+            <table className="border-collapse text-center select-none mx-auto w-full">
+              {/* Encabezado negro idéntico a Excel - Sticky top */}
               <thead>
-                <tr className="bg-black text-white font-black text-sm tracking-wider">
-                  <th className="border border-slate-700 px-4 py-2.5 text-base w-24 bg-white text-black font-black">
+                <tr className="bg-black text-white font-black text-sm tracking-wider sticky top-0 z-20 shadow-md">
+                  <th className="border border-slate-700 px-3 sm:px-4 py-2.5 text-base w-20 sm:w-24 bg-white text-black font-black sticky left-0 z-30 shadow-xs">
                     {rack.id}
                   </th>
-                  <th className="border border-slate-700 px-4 py-2.5 w-28 text-white">Nivel 6</th>
-                  <th className="border border-slate-700 px-4 py-2.5 w-28 text-white">Nivel 5</th>
-                  <th className="border border-slate-700 px-4 py-2.5 w-28 text-white">Nivel 4</th>
-                  <th className="border border-slate-700 px-4 py-2.5 w-28 text-white">Nivel 3</th>
-                  <th className="border border-slate-700 px-4 py-2.5 w-28 text-white">Nivel 2</th>
-                  <th className="border border-slate-700 px-4 py-2.5 w-28 text-white">Nivel 1</th>
+                  <th className="border border-slate-700 px-2 sm:px-4 py-2.5 w-24 sm:w-28 text-white text-xs sm:text-sm">Nivel 6</th>
+                  <th className="border border-slate-700 px-2 sm:px-4 py-2.5 w-24 sm:w-28 text-white text-xs sm:text-sm">Nivel 5</th>
+                  <th className="border border-slate-700 px-2 sm:px-4 py-2.5 w-24 sm:w-28 text-white text-xs sm:text-sm">Nivel 4</th>
+                  <th className="border border-slate-700 px-2 sm:px-4 py-2.5 w-24 sm:w-28 text-white text-xs sm:text-sm">Nivel 3</th>
+                  <th className="border border-slate-700 px-2 sm:px-4 py-2.5 w-24 sm:w-28 text-white text-xs sm:text-sm">Nivel 2</th>
+                  <th className="border border-slate-700 px-2 sm:px-4 py-2.5 w-24 sm:w-28 text-white text-xs sm:text-sm">Nivel 1</th>
                 </tr>
               </thead>
               <tbody>
@@ -110,8 +109,8 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
                   const moduloCode = rack.modules[rowIdx];
                   return (
                     <tr key={moduloCode} className="hover:bg-slate-50 transition-colors">
-                      {/* Código de Módulo (ej: 00801) */}
-                      <td className="border border-slate-400 bg-white text-black font-black text-xs py-1.5 px-3 tracking-wide select-text">
+                      {/* Código de Módulo (ej: 00801) - Sticky left */}
+                      <td className="border border-slate-400 bg-white text-black font-black text-xs py-2 px-2.5 sm:px-3 tracking-wide select-text sticky left-0 z-10 shadow-xs">
                         {moduloCode}
                       </td>
 
@@ -124,12 +123,10 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
                         let textClass = '';
 
                         if (slot.isEmpty) {
-                          // Vacio: Fondo negro sólido, texto blanco negrita (exacto como en el Excel)
-                          cellClass = 'bg-black text-white hover:bg-slate-900 border-slate-700';
+                          cellClass = 'bg-black text-white hover:bg-slate-900 border-slate-700 active:scale-98';
                           textClass = 'font-bold text-xs tracking-wider';
                         } else {
-                          // Ocupado: Fondo blanco puro, texto negro negrita
-                          cellClass = 'bg-white text-black hover:bg-emerald-50/60 border-slate-400 shadow-2xs';
+                          cellClass = 'bg-white text-black hover:bg-emerald-50/60 border-slate-400 shadow-2xs active:scale-98';
                           textClass = 'font-extrabold text-xs tracking-tight';
                         }
 
@@ -144,9 +141,9 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
                             key={slot.ubicacion}
                             onClick={() => onSlotClick(slot)}
                             title={`${slot.ubicacion} • ${slot.isEmpty ? 'Vacío' : `${slot.displayText} - ${slot.items[0]?.descripcion || ''}`}`}
-                            className={`relative border py-2 px-2 cursor-pointer transition-all duration-150 select-none ${cellClass} ${opacityClass} ${highlightClass}`}
+                            className={`relative border py-2.5 px-2 cursor-pointer transition-all duration-150 select-none ${cellClass} ${opacityClass} ${highlightClass}`}
                           >
-                            <div className="flex flex-col items-center justify-center min-h-[30px]">
+                            <div className="flex flex-col items-center justify-center min-h-[34px]">
                               <span className={textClass}>
                                 {slot.displayText}
                               </span>
@@ -174,14 +171,13 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
 
   // ══════════════════════════════════════════════════════════════════════════
   // MODO 2: ELEVACIÓN FRONTAL (MURO 2D DE ESTANTERÍA)
-  // Eje Y = Altura (Nivel 6 arriba, Nivel 1 abajo), Eje X = Módulos horizontales
   // ══════════════════════════════════════════════════════════════════════════
   const levels = [6, 5, 4, 3, 2, 1];
 
   return (
-    <div className="w-full overflow-x-auto pb-8 px-2">
+    <div className="w-full overflow-x-auto pb-16 sm:pb-8 px-1 sm:px-2">
       <div className="inline-block min-w-full">
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-lg space-y-3">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-lg space-y-3">
           {/* Header con módulos */}
           <div className="flex items-center gap-1.5 ml-20">
             {rack.modules.map((m, idx) => (
@@ -200,12 +196,10 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
             {levels.map((lvl, lvlIdx) => {
               return (
                 <div key={lvl} className="flex items-center gap-1.5">
-                  {/* Etiqueta lateral del Nivel con Verde CIAL */}
                   <div className="w-20 flex items-center justify-center font-black text-xs text-white bg-[#0a5c36] rounded-xl py-3 shadow-sm border border-[#08482a]">
                     Nivel {lvl}
                   </div>
 
-                  {/* Celdas por módulo */}
                   <div className="flex items-center gap-1.5">
                     {slotsGrid.map((rowSlots) => {
                       const slot = rowSlots[lvlIdx];

@@ -10,7 +10,16 @@ import { AisleDoubleView } from './components/AisleDoubleView';
 import { CellDetailModal } from './components/CellDetailModal';
 import { DataImportModal } from './components/DataImportModal';
 import { ReportModal } from './components/ReportModal';
-import { ClipboardCheck } from 'lucide-react';
+import { 
+  ClipboardCheck, 
+  Download, 
+  Layers, 
+  FileText, 
+  Upload, 
+  Sparkles,
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react';
 
 const LOCAL_STORAGE_STOCK_KEY = 'auditoria_almacenamiento_stock_v1';
 const LOCAL_STORAGE_AUDIT_KEY = 'auditoria_almacenamiento_audit_v1';
@@ -61,7 +70,7 @@ export default function App() {
     }
   }, [auditFindings]);
 
-  // 3. Navigation & Views (Default to Rack 8 as in the user's prompt!)
+  // 3. Navigation & Views (Default to Rack 8 as requested)
   const [selectedRackId, setSelectedRackId] = useState<number>(8);
   const [selectedAisleId, setSelectedAisleId] = useState<number>(4); // Pasillo 4 (Rack 7 - 8)
   const [viewMode, setViewMode] = useState<ViewMode>('audit_excel');
@@ -69,12 +78,35 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [auditMode, setAuditMode] = useState<boolean>(false);
 
-  // 4. Modals
+  // 4. PWA Installation Event
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstall = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setIsInstallable(false);
+    }
+  };
+
+  // 5. Modals
   const [selectedSlot, setSelectedSlot] = useState<SlotData | null>(null);
   const [isImportOpen, setIsImportOpen] = useState<boolean>(false);
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
 
-  // 5. Stock Index O(1)
+  // 6. Stock Index O(1)
   const stockIndex = useMemo(() => buildStockIndex(stockData), [stockData]);
 
   // Current Rack configuration
@@ -119,6 +151,15 @@ export default function App() {
     return generateRackSlots(r, stockIndex);
   };
 
+  // Discrepancies count
+  const discrepanciesCount = useMemo(() => {
+    let count = 0;
+    for (const f of auditFindings.values()) {
+      if (f.discrepancyType !== 'NONE') count++;
+    }
+    return count;
+  }, [auditFindings]);
+
   // Handlers
   const handleSaveAuditFinding = (finding: AuditFinding) => {
     setAuditFindings(prev => {
@@ -151,7 +192,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9] text-slate-800 flex flex-col font-sans antialiased">
+    <div className="min-h-screen bg-[#f1f5f9] text-slate-800 flex flex-col font-sans antialiased pb-20 sm:pb-0">
       {/* CIAL Brand Header */}
       <Navbar
         totalSlots={globalWarehouseStats.totalSlots}
@@ -168,6 +209,22 @@ export default function App() {
         onOpenReport={() => setIsReportOpen(true)}
         onResetData={handleRestoreDefaultStock}
       />
+
+      {/* PWA Install Banner on Mobile (if supported) */}
+      {isInstallable && (
+        <div className="bg-[#08482a] text-white px-4 py-2 flex items-center justify-between text-xs border-b border-emerald-600/40">
+          <div className="flex items-center gap-2">
+            <Download className="w-4 h-4 text-emerald-300 animate-bounce" />
+            <span>Instala <strong>Auditoría Almacenamiento</strong> en tu teléfono</span>
+          </div>
+          <button
+            onClick={handleInstallClick}
+            className="px-2.5 py-1 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black rounded-lg text-[11px] shadow-xs cursor-pointer"
+          >
+            Instalar PWA
+          </button>
+        </div>
+      )}
 
       {/* Rack Selector & View Mode Switcher */}
       <RackTabs
@@ -188,22 +245,22 @@ export default function App() {
       {auditMode && (
         <div className="bg-amber-100 border-b border-amber-300 px-4 py-2.5 flex items-center justify-between text-xs text-amber-950 shadow-xs">
           <div className="flex items-center gap-2 font-bold">
-            <ClipboardCheck className="w-4 h-4 text-amber-600 animate-pulse" />
-            <span>
-              MODO AUDITORÍA ACTIVO: Haz clic en cualquier posición del rack para verificar físico vs sistémico y registrar discrepancias.
+            <ClipboardCheck className="w-4 h-4 text-amber-600 animate-pulse shrink-0" />
+            <span className="leading-tight">
+              MODO AUDITORÍA ACTIVO: Toca cualquier celda para marcar diferencias (ej: Falta 1 de 2, Falta 2 de 2).
             </span>
           </div>
           <button
             onClick={() => setIsReportOpen(true)}
-            className="px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-lg font-black text-xs transition-all shadow-xs cursor-pointer"
+            className="shrink-0 px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-lg font-black text-xs transition-all shadow-xs cursor-pointer"
           >
-            Ver Informe ({auditFindings.size})
+            Informe ({discrepanciesCount} difs)
           </button>
         </div>
       )}
 
       {/* Main Rack View Area */}
-      <main className="flex-1 p-4 max-w-7xl mx-auto w-full">
+      <main className="flex-1 p-2 sm:p-4 max-w-7xl mx-auto w-full">
         {viewMode === 'double_aisle' ? (
           <AisleDoubleView
             aisles={DEFAULT_AISLES}
@@ -229,14 +286,14 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer info bar */}
-      <footer className="bg-white border-t border-slate-200 px-4 py-3 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2 shadow-xs">
+      {/* Desktop Footer info bar */}
+      <footer className="hidden sm:flex bg-white border-t border-slate-200 px-4 py-3 text-xs text-slate-500 items-center justify-between shadow-xs">
         <div className="flex items-center gap-2 font-medium">
-          <span className="font-bold text-[#0a5c36]">Auditoría Almacenamiento v1.0</span>
+          <span className="font-bold text-[#0a5c36]">Auditoría Almacenamiento CIAL</span>
           <span>•</span>
-          <span>CIAL Alimentos CD San Jorge</span>
+          <span>CD San Jorge</span>
           <span>•</span>
-          <span>29 Racks Activos</span>
+          <span>29 Racks Activos • PWA Mobile-First</span>
         </div>
         <div className="flex items-center gap-3 text-slate-600 font-semibold">
           <button
@@ -254,6 +311,72 @@ export default function App() {
           </button>
         </div>
       </footer>
+
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {/* BARRA DE NAVEGACIÓN MÓVIL INFERIOR (PWA MOBILE-FIRST)                 */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 py-1.5 px-3 flex items-center justify-around shadow-2xl safe-area-inset-bottom">
+        {/* Selector de Rack Móvil */}
+        <div className="flex flex-col items-center">
+          <select
+            value={selectedRackId}
+            onChange={e => setSelectedRackId(Number(e.target.value))}
+            className="text-[11px] font-black text-[#0a5c36] bg-[#e6f4ea] border border-[#a3cfb6] rounded-lg px-2 py-1 focus:outline-none"
+          >
+            {WAREHOUSE_RACKS.map(r => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+          <span className="text-[9px] text-slate-400 font-bold mt-0.5">Rack</span>
+        </div>
+
+        {/* Botón Central Modo Auditoría */}
+        <button
+          onClick={() => setAuditMode(prev => !prev)}
+          className={`flex flex-col items-center justify-center p-1.5 rounded-xl transition-all cursor-pointer ${
+            auditMode
+              ? 'bg-amber-400 text-slate-950 font-black shadow-md scale-105 ring-2 ring-amber-300'
+              : 'bg-slate-100 text-slate-700'
+          }`}
+        >
+          <div className="relative">
+            <ClipboardCheck className="w-5 h-5" />
+            {auditFindings.size > 0 && (
+              <span className="absolute -top-1 -right-2 bg-slate-900 text-amber-300 font-black text-[9px] px-1.5 rounded-full">
+                {auditFindings.size}
+              </span>
+            )}
+          </div>
+          <span className="text-[9px] font-bold mt-0.5">
+            {auditMode ? 'Auditando' : 'Auditoría'}
+          </span>
+        </button>
+
+        {/* Botón Informe */}
+        <button
+          onClick={() => setIsReportOpen(true)}
+          className="flex flex-col items-center text-slate-600 hover:text-[#0a5c36] transition-colors cursor-pointer relative"
+        >
+          <FileText className="w-5 h-5" />
+          {discrepanciesCount > 0 && (
+            <span className="absolute -top-1 right-2 bg-rose-600 text-white font-black text-[9px] px-1 rounded-full">
+              {discrepanciesCount}
+            </span>
+          )}
+          <span className="text-[9px] font-bold mt-0.5">Informe</span>
+        </button>
+
+        {/* Botón Cargar SAP */}
+        <button
+          onClick={() => setIsImportOpen(true)}
+          className="flex flex-col items-center text-slate-600 hover:text-[#0a5c36] transition-colors cursor-pointer"
+        >
+          <Upload className="w-5 h-5" />
+          <span className="text-[9px] font-bold mt-0.5">Data SAP</span>
+        </button>
+      </nav>
 
       {/* Detail / Audit Modal */}
       <CellDetailModal
