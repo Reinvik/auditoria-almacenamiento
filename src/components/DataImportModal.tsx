@@ -7,7 +7,6 @@ import {
   FileSpreadsheet, 
   ClipboardPaste, 
   RotateCcw, 
-  Check, 
   AlertCircle,
   Sparkles
 } from 'lucide-react';
@@ -56,7 +55,6 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Auto-parse on text change
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const txt = e.target.value;
     setPastedText(txt);
@@ -78,7 +76,7 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
     try {
       const items = parsePastedData(pastedText);
       if (items.length === 0) {
-        setErrorMessage('No se detectaron filas válidas con ubicación. Asegúrate de incluir la columna Ubicación.');
+        setErrorMessage('No se detectaron filas válidas con ubicación.');
         setLoading(false);
         return;
       }
@@ -120,39 +118,39 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="bg-slate-950 px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="bg-white border border-slate-300 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Header con Verde CIAL */}
+        <div className="bg-[#0a5c36] text-white px-5 py-3.5 flex items-center justify-between shadow-md">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-600/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+            <div className="w-10 h-10 rounded-xl bg-[#08482a] border border-white/20 flex items-center justify-center text-emerald-200">
               <Upload className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-white">
-                Carga y Actualización de Stock
+              <h3 className="text-base font-black">
+                Carga de Stock SAP / Excel
               </h3>
-              <p className="text-xs text-slate-400">
-                Pega la data desde SAP o sube tu archivo Excel de auditoría
+              <p className="text-xs text-emerald-100">
+                Pega directamente columnas de SAP o arrastra la planilla de inventario
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+            className="p-1.5 rounded-lg text-emerald-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Buttons */}
-        <div className="flex border-b border-slate-800 bg-slate-950/60 px-5 pt-2 gap-2 text-xs font-semibold">
+        <div className="flex border-b border-slate-200 bg-slate-50 px-5 pt-2 gap-2 text-xs font-bold">
           <button
             onClick={() => setActiveTab('paste')}
-            className={`px-3 py-2 border-b-2 flex items-center gap-1.5 transition-all ${
+            className={`px-3 py-2 border-b-2 flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === 'paste'
-                ? 'border-cyan-500 text-cyan-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-[#0a5c36] text-[#0a5c36]'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <ClipboardPaste className="w-4 h-4" />
@@ -161,10 +159,10 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
 
           <button
             onClick={() => setActiveTab('file')}
-            className={`px-3 py-2 border-b-2 flex items-center gap-1.5 transition-all ${
+            className={`px-3 py-2 border-b-2 flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === 'file'
-                ? 'border-cyan-500 text-cyan-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-[#0a5c36] text-[#0a5c36]'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <FileSpreadsheet className="w-4 h-4" />
@@ -173,22 +171,22 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
 
           <button
             onClick={() => setActiveTab('restore')}
-            className={`px-3 py-2 border-b-2 flex items-center gap-1.5 transition-all ${
+            className={`px-3 py-2 border-b-2 flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === 'restore'
-                ? 'border-cyan-500 text-cyan-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-[#0a5c36] text-[#0a5c36]'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <RotateCcw className="w-4 h-4" />
-            <span>Restaurar Base Inicial</span>
+            <span>Restaurar Base Oficial</span>
           </button>
         </div>
 
         {/* Body Content */}
         <div className="p-5 overflow-y-auto space-y-4">
           {errorMessage && (
-            <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
               <span>{errorMessage}</span>
             </div>
           )}
@@ -197,13 +195,13 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
           {activeTab === 'paste' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-300">
+                <label className="text-xs font-black text-slate-800">
                   Copia las columnas desde SAP o Excel y pégalas aquí:
                 </label>
                 <button
                   type="button"
                   onClick={handleLoadSample}
-                  className="text-[11px] font-bold text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-[11px] font-black text-[#0a5c36] hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   Cargar Ejemplo del Mensaje
@@ -211,19 +209,19 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
               </div>
 
               <textarea
-                rows={10}
+                rows={9}
                 placeholder="Material	Centro	Almacén	Lote	Descripción material	Tipo almacén	Ubicación	Stock disponible	Unidad	FeCaduc	Peso..."
                 value={pastedText}
                 onChange={handleTextChange}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0a5c36] focus:bg-white focus:ring-1 focus:ring-[#0a5c36]"
               />
 
               {parsedPreviewCount !== null && (
-                <div className="flex items-center justify-between p-2.5 rounded-lg bg-cyan-950/40 border border-cyan-500/30 text-xs">
-                  <span className="text-cyan-300 font-semibold">
-                    ✓ Se detectaron <strong>{parsedPreviewCount.toLocaleString()}</strong> registros listos para procesar
+                <div className="flex items-center justify-between p-3 rounded-xl bg-[#e6f4ea] border border-[#a3cfb6] text-xs">
+                  <span className="text-[#08482a] font-bold">
+                    ✓ Se detectaron <strong>{parsedPreviewCount.toLocaleString()}</strong> registros válidos
                   </span>
-                  <span className="text-[11px] text-slate-400">
+                  <span className="text-[11px] text-slate-600">
                     Bodega actual: {currentItemsCount.toLocaleString()} items
                   </span>
                 </div>
@@ -234,15 +232,15 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
           {/* TAB 2: FILE UPLOAD */}
           {activeTab === 'file' && (
             <div className="space-y-4 text-center py-6">
-              <div className="border-2 border-dashed border-slate-700 hover:border-cyan-500 rounded-2xl p-8 transition-colors bg-slate-950/40">
-                <FileSpreadsheet className="w-12 h-12 text-cyan-400 mx-auto mb-3" />
-                <h4 className="text-sm font-bold text-white mb-1">
+              <div className="border-2 border-dashed border-slate-300 hover:border-[#0a5c36] rounded-2xl p-8 transition-colors bg-slate-50">
+                <FileSpreadsheet className="w-12 h-12 text-[#0a5c36] mx-auto mb-3" />
+                <h4 className="text-sm font-black text-slate-900 mb-1">
                   Arrastra tu archivo Excel aquí
                 </h4>
-                <p className="text-xs text-slate-400 mb-4">
-                  Soporta formatos .xlsx, .xlsm (como Formato tipo toma Inventario auditoria Altura.xlsm) o .csv
+                <p className="text-xs text-slate-500 mb-4">
+                  Soporta formatos .xlsx, .xlsm o .csv
                 </p>
-                <label className="inline-block px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs cursor-pointer shadow-lg shadow-cyan-600/20 transition-all">
+                <label className="inline-block px-5 py-2.5 rounded-xl bg-[#0a5c36] hover:bg-[#08482a] text-white font-black text-xs cursor-pointer shadow-md transition-all">
                   <span>Seleccionar Archivo</span>
                   <input
                     type="file"
@@ -257,12 +255,12 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
 
           {/* TAB 3: RESTORE DEFAULT */}
           {activeTab === 'restore' && (
-            <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3">
-              <h4 className="text-sm font-bold text-white">
+            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
+              <h4 className="text-sm font-black text-slate-900">
                 Restaurar Base de Datos Oficial (Excel Actual)
               </h4>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Vuelve a cargar el inventario oficial extraído de la hoja BBD con sus 4.641 registros reales y los 29 Racks mapeados.
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Vuelve a cargar el inventario oficial extraído de la planilla BBD con sus 4.641 registros reales y los 29 Racks mapeados.
               </p>
               <button
                 type="button"
@@ -270,9 +268,9 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
                   onRestoreDefault();
                   onClose();
                 }}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 font-bold text-xs border border-slate-700 flex items-center gap-2 cursor-pointer transition-all"
+                className="px-4 py-2 rounded-xl bg-[#e6f4ea] hover:bg-[#d4edd8] text-[#08482a] font-black text-xs border border-[#a3cfb6] flex items-center gap-2 cursor-pointer transition-all"
               >
-                <RotateCcw className="w-4 h-4" />
+                <RotateCcw className="w-4 h-4 text-[#0a5c36]" />
                 Restaurar los 4.641 registros originales
               </button>
             </div>
@@ -280,10 +278,10 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="bg-slate-950 px-5 py-3 border-t border-slate-800 flex items-center justify-end gap-2">
+        <div className="bg-slate-50 px-5 py-3 border-t border-slate-200 flex items-center justify-end gap-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:text-white"
+            className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
           >
             Cerrar
           </button>
@@ -291,7 +289,7 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
             <button
               onClick={handleProcessPasted}
               disabled={loading || !pastedText.trim()}
-              className="px-5 py-2 rounded-lg text-xs font-bold bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white shadow-lg shadow-cyan-600/30 transition-all cursor-pointer"
+              className="px-5 py-2 rounded-xl text-xs font-black bg-[#0a5c36] hover:bg-[#08482a] disabled:opacity-50 text-white shadow-md transition-all cursor-pointer"
             >
               {loading ? 'Procesando...' : 'Procesar y Aplicar a Bodega'}
             </button>

@@ -1,25 +1,40 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --color-brand-primary: #0a5c36;    /* Verde Oficial CIAL */
+  --color-brand-secondary: #08482a;  /* Verde Oscuro CIAL */
+  --color-brand-light: #e6f4ea;      /* Verde Claro Fondo CIAL */
+  --color-brand-border: #a3cfb6;     /* Borde Verde CIAL */
+  --color-brand-emerald: #10b981;    /* Esmeralda Éxito */
+}
+
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-100 font-sans antialiased selection:bg-cyan-500 selection:text-white;
+    background-color: #f1f5f9; /* Slate-100 corporativo de CIAL */
+    color: #1e293b;            /* Slate-800 texto */
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+    padding: 0;
   }
 }
 
-/* Custom scrollbar for wide warehouse rack grids */
+/* Custom scrollbar para grilla de racks y pasillos */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #090d16;
+  background: #e2e8f0;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #0a5c36;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #08482a;
 }
 
 /* High contrast print styling */

@@ -5,9 +5,7 @@ import {
   Columns, 
   Grid3X3, 
   SplitSquareVertical, 
-  Filter,
-  CheckCircle2,
-  AlertCircle
+  Filter
 } from 'lucide-react';
 import { RackConfig, AislePair } from '../types/warehouse';
 
@@ -42,14 +40,10 @@ export const RackTabs: React.FC<RackTabsProps> = ({
   onChangeViewMode,
   filterType,
   onChangeFilter,
-  aisles,
-  selectedAisleId,
-  onSelectAisle,
   rackStats,
 }) => {
   const tabsContainerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll the active tab into view
   useEffect(() => {
     if (tabsContainerRef.current) {
       const activeTabEl = tabsContainerRef.current.querySelector('[data-active="true"]');
@@ -64,7 +58,7 @@ export const RackTabs: React.FC<RackTabsProps> = ({
   const nextRack = currentIndex < racks.length - 1 ? racks[currentIndex + 1] : null;
 
   return (
-    <div className="bg-slate-900 border-b border-slate-800 px-4 py-2.5 space-y-2.5">
+    <div className="bg-white border-b border-slate-200 px-4 py-2.5 space-y-2.5 shadow-sm">
       {/* Top Row: Rack Switcher & View Mode Toggles */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Rack Navigation / Dropdown */}
@@ -72,7 +66,7 @@ export const RackTabs: React.FC<RackTabsProps> = ({
           <button
             onClick={() => prevRack && onSelectRack(prevRack.id)}
             disabled={!prevRack}
-            className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all"
+            className="p-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-[#e6f4ea] hover:text-[#0a5c36] disabled:opacity-30 disabled:pointer-events-none transition-all border border-slate-200 cursor-pointer"
             title="Rack anterior"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -81,7 +75,7 @@ export const RackTabs: React.FC<RackTabsProps> = ({
           <select
             value={selectedRackId}
             onChange={e => onSelectRack(Number(e.target.value))}
-            className="bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-cyan-500"
+            className="bg-slate-50 border border-slate-300 text-slate-900 text-xs font-black rounded-xl px-3 py-1.5 focus:outline-none focus:border-[#0a5c36] shadow-sm cursor-pointer"
           >
             {racks.map(r => (
               <option key={r.id} value={r.id}>
@@ -93,30 +87,30 @@ export const RackTabs: React.FC<RackTabsProps> = ({
           <button
             onClick={() => nextRack && onSelectRack(nextRack.id)}
             disabled={!nextRack}
-            className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all"
+            className="p-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-[#e6f4ea] hover:text-[#0a5c36] disabled:opacity-30 disabled:pointer-events-none transition-all border border-slate-200 cursor-pointer"
             title="Rack siguiente"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
 
           {/* Current Rack Pill */}
-          <div className="hidden sm:flex items-center gap-2 ml-2 px-3 py-1 rounded-lg bg-cyan-950/40 border border-cyan-500/30 text-xs">
-            <span className="font-extrabold text-cyan-300">RACK {selectedRackId}</span>
+          <div className="hidden sm:flex items-center gap-2 ml-2 px-3 py-1 rounded-xl bg-[#e6f4ea] border border-[#a3cfb6] text-xs shadow-xs">
+            <span className="font-black text-[#08482a]">RACK {selectedRackId}</span>
             <span className="text-slate-400">•</span>
-            <span className="text-slate-300">
-              <strong className="text-white">{rackStats.occupiedSlots}</strong> ocup / <strong className="text-slate-400">{rackStats.emptySlots}</strong> vac ({rackStats.occupancyRate}%)
+            <span className="text-slate-700">
+              <strong className="text-[#0a5c36] font-extrabold">{rackStats.occupiedSlots}</strong> ocupadas / <strong className="text-slate-900 font-extrabold">{rackStats.emptySlots}</strong> vacías ({rackStats.occupancyRate}%)
             </span>
           </div>
         </div>
 
         {/* View Mode Switcher */}
-        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
           <button
             onClick={() => onChangeViewMode('audit_excel')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+            className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               viewMode === 'audit_excel'
-                ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-500/30'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[#0a5c36] text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
             title="Vista idéntica a la hoja de auditoría de Excel (Módulo x Niveles)"
           >
@@ -127,10 +121,10 @@ export const RackTabs: React.FC<RackTabsProps> = ({
 
           <button
             onClick={() => onChangeViewMode('elevation_wall')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+            className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               viewMode === 'elevation_wall'
-                ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-500/30'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[#0a5c36] text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
             title="Vista de elevación frontal de muro de rack (Módulos horizontales)"
           >
@@ -141,10 +135,10 @@ export const RackTabs: React.FC<RackTabsProps> = ({
 
           <button
             onClick={() => onChangeViewMode('double_aisle')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+            className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               viewMode === 'double_aisle'
-                ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-500/30'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[#0a5c36] text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
             title="Vista de pasillo con caras izquierda y derecha enfrentadas"
           >
@@ -159,40 +153,40 @@ export const RackTabs: React.FC<RackTabsProps> = ({
           <Filter className="w-3.5 h-3.5 text-slate-400 hidden sm:inline" />
           <button
             onClick={() => onChangeFilter('ALL')}
-            className={`px-2 py-0.8 rounded text-[11px] font-semibold transition-all ${
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
               filterType === 'ALL'
-                ? 'bg-slate-700 text-white'
-                : 'text-slate-400 hover:text-slate-200 bg-slate-800/40'
+                ? 'bg-slate-800 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 bg-slate-100 border border-slate-200'
             }`}
           >
             Todos
           </button>
           <button
             onClick={() => onChangeFilter('ONLY_EMPTY')}
-            className={`px-2 py-0.8 rounded text-[11px] font-semibold transition-all ${
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
               filterType === 'ONLY_EMPTY'
-                ? 'bg-slate-200 text-slate-950 font-bold'
-                : 'text-slate-400 hover:text-slate-200 bg-slate-800/40'
+                ? 'bg-black text-white ring-2 ring-slate-400'
+                : 'text-slate-900 hover:bg-slate-200 bg-white border border-slate-300'
             }`}
           >
             Solo Vacíos
           </button>
           <button
             onClick={() => onChangeFilter('ONLY_OCCUPIED')}
-            className={`px-2 py-0.8 rounded text-[11px] font-semibold transition-all ${
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
               filterType === 'ONLY_OCCUPIED'
-                ? 'bg-emerald-600 text-white'
-                : 'text-slate-400 hover:text-slate-200 bg-slate-800/40'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-emerald-800 hover:bg-emerald-100 bg-emerald-50 border border-emerald-200'
             }`}
           >
             Solo Ocupados
           </button>
           <button
             onClick={() => onChangeFilter('MULTI_PALLETS')}
-            className={`px-2 py-0.8 rounded text-[11px] font-semibold transition-all ${
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
               filterType === 'MULTI_PALLETS'
-                ? 'bg-purple-600 text-white'
-                : 'text-slate-400 hover:text-slate-200 bg-slate-800/40'
+                ? 'bg-purple-700 text-white shadow-xs'
+                : 'text-purple-800 hover:bg-purple-100 bg-purple-50 border border-purple-200'
             }`}
           >
             x2 Pallets
@@ -200,10 +194,10 @@ export const RackTabs: React.FC<RackTabsProps> = ({
         </div>
       </div>
 
-      {/* Bottom Row: Excel Sheet Style Tabs (RACK 1 to RACK 29) */}
+      {/* Bottom Row: CIAL Style Rack Tabs (RACK 1 to RACK 29) */}
       <div 
         ref={tabsContainerRef}
-        className="flex items-center gap-1 overflow-x-auto py-1 scrollbar-none text-xs border-t border-slate-800/60 pt-2"
+        className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none text-xs border-t border-slate-100 pt-2"
       >
         {racks.map(rack => {
           const isActive = rack.id === selectedRackId;
@@ -212,10 +206,10 @@ export const RackTabs: React.FC<RackTabsProps> = ({
               key={rack.id}
               data-active={isActive}
               onClick={() => onSelectRack(rack.id)}
-              className={`px-3 py-1 rounded-md text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+              className={`px-3 py-1 rounded-lg text-xs font-black transition-all whitespace-nowrap cursor-pointer ${
                 isActive
-                  ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 scale-105'
-                  : 'bg-slate-800/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800'
+                  ? 'bg-[#0a5c36] text-white shadow-md shadow-emerald-950/20 scale-105 border border-[#08482a]'
+                  : 'bg-slate-100 text-slate-600 hover:bg-[#e6f4ea] hover:text-[#0a5c36] border border-slate-200/80'
               }`}
             >
               {rack.sheet}

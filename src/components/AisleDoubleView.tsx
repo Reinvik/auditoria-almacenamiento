@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { RackConfig, SlotData, AuditFinding, AislePair } from '../types/warehouse';
-import { Check, ArrowDown, SplitSquareVertical, Compass } from 'lucide-react';
+import { ArrowDown, SplitSquareVertical } from 'lucide-react';
 
 interface AisleDoubleViewProps {
   aisles: AislePair[];
@@ -28,7 +28,6 @@ export const AisleDoubleView: React.FC<AisleDoubleViewProps> = ({
   const [customLeftRackId, setCustomLeftRackId] = useState<number>(currentAisle.leftRackId);
   const [customRightRackId, setCustomRightRackId] = useState<number>(currentAisle.rightRackId);
 
-  // Sync with selected aisle
   React.useEffect(() => {
     setCustomLeftRackId(currentAisle.leftRackId);
     setCustomRightRackId(currentAisle.rightRackId);
@@ -53,21 +52,23 @@ export const AisleDoubleView: React.FC<AisleDoubleViewProps> = ({
     const searchMatch = isSearchMatch(slot);
     const finding = auditFindings.get(slot.ubicacion);
 
-    let bgClass = slot.isEmpty ? 'bg-black text-white' : 'bg-white text-black';
-    let ringClass = searchMatch ? 'ring-2 ring-cyan-400 scale-105' : '';
+    let bgClass = slot.isEmpty 
+      ? 'bg-black text-white border-slate-700' 
+      : 'bg-white text-black border-slate-300 hover:border-[#0a5c36]';
+    let ringClass = searchMatch ? 'ring-2 ring-emerald-500 scale-105 shadow-md shadow-emerald-500/40' : '';
 
     return (
       <div
         key={slot.ubicacion}
         onClick={() => onSlotClick(slot)}
         title={`${slot.ubicacion} • ${slot.displayText}`}
-        className={`relative border border-slate-700 h-9 px-1.5 flex flex-col items-center justify-center cursor-pointer transition-all ${bgClass} ${ringClass} hover:opacity-90`}
+        className={`relative border h-9 px-1.5 flex flex-col items-center justify-center cursor-pointer transition-all ${bgClass} ${ringClass} hover:opacity-90 shadow-2xs`}
       >
-        <span className="text-[10.5px] font-extrabold tracking-tight truncate max-w-full">
+        <span className="text-[10.5px] font-black tracking-tight truncate max-w-full">
           {slot.displayText}
         </span>
         {finding && (
-          <span className={`absolute top-0.5 right-0.5 w-2 h-2 rounded-full ${finding.discrepancyType === 'NONE' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+          <span className={`absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full ${finding.discrepancyType === 'NONE' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
         )}
       </div>
     );
@@ -78,20 +79,20 @@ export const AisleDoubleView: React.FC<AisleDoubleViewProps> = ({
   return (
     <div className="w-full space-y-4 pb-12">
       {/* Pasillo Header & Selector */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 rounded-xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white border border-slate-200 p-4 rounded-2xl shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-cyan-600/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+          <div className="w-10 h-10 rounded-xl bg-[#e6f4ea] border border-[#a3cfb6] flex items-center justify-center text-[#0a5c36]">
             <SplitSquareVertical className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+            <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
               <span>Recorrido de Pasillo Enfrentado</span>
-              <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-cyan-500 text-slate-950">
+              <span className="px-2.5 py-0.5 rounded-md text-[11px] font-black bg-[#0a5c36] text-white">
                 {currentAisle.name}
               </span>
             </h2>
-            <p className="text-xs text-slate-400">
-              Vista simultánea de cara izquierda y cara derecha durante la toma de inventario
+            <p className="text-xs text-slate-500">
+              Vista simultánea de cara izquierda y cara derecha durante la auditoría en terreno
             </p>
           </div>
         </div>
@@ -101,7 +102,7 @@ export const AisleDoubleView: React.FC<AisleDoubleViewProps> = ({
           <select
             value={selectedAisleId}
             onChange={e => onSelectAisle(Number(e.target.value))}
-            className="bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-500"
+            className="bg-slate-50 border border-slate-300 text-slate-900 text-xs font-black rounded-xl px-3 py-1.5 focus:outline-none focus:border-[#0a5c36] shadow-sm cursor-pointer"
           >
             {aisles.map(a => (
               <option key={a.id} value={a.id}>
@@ -114,40 +115,40 @@ export const AisleDoubleView: React.FC<AisleDoubleViewProps> = ({
 
       {/* Facing Grid View */}
       <div className="w-full overflow-x-auto">
-        <div className="min-w-[900px] bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-2xl">
+        <div className="min-w-[900px] bg-white border border-slate-200 rounded-2xl p-4 shadow-md">
           {/* Header Labels for Left & Right */}
           <div className="grid grid-cols-[1fr_80px_1fr] gap-2 mb-3 text-center">
             {/* Left Rack Header */}
-            <div className="bg-slate-900 border border-slate-700 p-2 rounded-xl flex items-center justify-between px-4">
+            <div className="bg-[#0a5c36] text-white p-2.5 rounded-xl flex items-center justify-between px-4 shadow-xs">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-400">CARA IZQUIERDA:</span>
-                <span className="text-sm font-black text-cyan-400">{leftRack.name}</span>
+                <span className="text-xs font-bold text-emerald-200 uppercase">Cara Izquierda:</span>
+                <span className="text-sm font-black text-white tracking-wide">{leftRack.name}</span>
               </div>
-              <span className="text-xs text-slate-400 font-mono">{leftRack.moduleCount} Módulos</span>
+              <span className="text-xs text-emerald-100 font-mono font-bold">{leftRack.moduleCount} Módulos</span>
             </div>
 
             {/* Walking Corridor Indicator */}
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl flex flex-col items-center justify-center text-slate-400 text-[10px] font-bold">
-              <ArrowDown className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+            <div className="bg-[#e6f4ea] border border-[#a3cfb6] rounded-xl flex flex-col items-center justify-center text-[#08482a] text-[10px] font-black">
+              <ArrowDown className="w-3.5 h-3.5 text-[#0a5c36] animate-pulse" />
               PASILLO
             </div>
 
             {/* Right Rack Header */}
-            <div className="bg-slate-900 border border-slate-700 p-2 rounded-xl flex items-center justify-between px-4">
-              <span className="text-xs text-slate-400 font-mono">{rightRack.moduleCount} Módulos</span>
+            <div className="bg-[#08482a] text-white p-2.5 rounded-xl flex items-center justify-between px-4 shadow-xs">
+              <span className="text-xs text-emerald-100 font-mono font-bold">{rightRack.moduleCount} Módulos</span>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-black text-indigo-400">{rightRack.name}</span>
-                <span className="text-xs font-bold text-slate-400">:CARA DERECHA</span>
+                <span className="text-sm font-black text-white tracking-wide">{rightRack.name}</span>
+                <span className="text-xs font-bold text-emerald-200 uppercase">:Cara Derecha</span>
               </div>
             </div>
           </div>
 
           {/* Level Labels */}
-          <div className="grid grid-cols-[1fr_80px_1fr] gap-2 mb-2 text-center text-[10px] font-bold text-slate-400">
+          <div className="grid grid-cols-[1fr_80px_1fr] gap-2 mb-2 text-center text-[10px] font-extrabold text-slate-600 uppercase">
             <div className="grid grid-cols-6 gap-1">
               <span>Niv 6</span><span>Niv 5</span><span>Niv 4</span><span>Niv 3</span><span>Niv 2</span><span>Niv 1</span>
             </div>
-            <div className="text-center font-mono">MÓDULO</div>
+            <div className="text-center font-mono text-[#08482a]">MÓDULO</div>
             <div className="grid grid-cols-6 gap-1">
               <span>Niv 1</span><span>Niv 2</span><span>Niv 3</span><span>Niv 4</span><span>Niv 5</span><span>Niv 6</span>
             </div>
@@ -167,24 +168,23 @@ export const AisleDoubleView: React.FC<AisleDoubleViewProps> = ({
                     {leftRow ? (
                       leftRow.map(slot => renderSlotCell(slot))
                     ) : (
-                      <div className="col-span-6 bg-slate-900/30 border border-dashed border-slate-800 h-9 rounded flex items-center justify-center text-[10px] text-slate-600">
+                      <div className="col-span-6 bg-slate-100 border border-dashed border-slate-200 h-9 rounded flex items-center justify-center text-[10px] text-slate-400">
                         Sin módulo
                       </div>
                     )}
                   </div>
 
                   {/* Module Number in Corridor */}
-                  <div className="h-9 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-center font-mono font-bold text-xs text-slate-300">
+                  <div className="h-9 bg-slate-100 border border-slate-300 rounded-lg flex items-center justify-center font-mono font-black text-xs text-slate-800">
                     M.{moduleLabel}
                   </div>
 
-                  {/* Right Rack 6 Levels (Mirrored: Nivel 1 to 6 or 6 to 1) */}
+                  {/* Right Rack 6 Levels */}
                   <div className="grid grid-cols-6 gap-1">
                     {rightRow ? (
-                      // Reversed so Nivel 1 is closer to the center if desired, or standard 6 to 1
                       [...rightRow].reverse().map(slot => renderSlotCell(slot))
                     ) : (
-                      <div className="col-span-6 bg-slate-900/30 border border-dashed border-slate-800 h-9 rounded flex items-center justify-center text-[10px] text-slate-600">
+                      <div className="col-span-6 bg-slate-100 border border-dashed border-slate-200 h-9 rounded flex items-center justify-center text-[10px] text-slate-400">
                         Sin módulo
                       </div>
                     )}

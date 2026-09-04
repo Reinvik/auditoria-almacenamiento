@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { StockItem, SlotData, AuditFinding, RackConfig } from './types/warehouse';
+import { StockItem, SlotData, AuditFinding } from './types/warehouse';
 import { WAREHOUSE_RACKS, DEFAULT_AISLES } from './config/warehouseConfig';
 import { INITIAL_STOCK_DATA } from './data/initialStockData';
 import { buildStockIndex, generateRackSlots, calculateRackStats } from './utils/warehouseMapper';
@@ -10,13 +10,13 @@ import { AisleDoubleView } from './components/AisleDoubleView';
 import { CellDetailModal } from './components/CellDetailModal';
 import { DataImportModal } from './components/DataImportModal';
 import { ReportModal } from './components/ReportModal';
-import { ClipboardCheck, Sparkles, Layers } from 'lucide-react';
+import { ClipboardCheck } from 'lucide-react';
 
-const LOCAL_STORAGE_STOCK_KEY = 'nexus_altura_stock_data_v1';
-const LOCAL_STORAGE_AUDIT_KEY = 'nexus_altura_audit_findings_v1';
+const LOCAL_STORAGE_STOCK_KEY = 'auditoria_almacenamiento_stock_v1';
+const LOCAL_STORAGE_AUDIT_KEY = 'auditoria_almacenamiento_audit_v1';
 
 export default function App() {
-  // 1. Stock Data (load from localStorage or fallback to INITIAL_STOCK_DATA)
+  // 1. Stock Data
   const [stockData, setStockData] = useState<StockItem[]>(() => {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_STOCK_KEY);
@@ -30,7 +30,6 @@ export default function App() {
     return INITIAL_STOCK_DATA;
   });
 
-  // Save stockData to localStorage
   useEffect(() => {
     try {
       localStorage.setItem(LOCAL_STORAGE_STOCK_KEY, JSON.stringify(stockData));
@@ -39,7 +38,7 @@ export default function App() {
     }
   }, [stockData]);
 
-  // 2. Audit Findings (Map of ubicacion -> AuditFinding)
+  // 2. Audit Findings
   const [auditFindings, setAuditFindings] = useState<Map<string, AuditFinding>>(() => {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_AUDIT_KEY);
@@ -53,7 +52,6 @@ export default function App() {
     return new Map<string, AuditFinding>();
   });
 
-  // Save auditFindings to localStorage
   useEffect(() => {
     try {
       const entries = Array.from(auditFindings.entries());
@@ -114,7 +112,7 @@ export default function App() {
     };
   }, [stockIndex, stockData]);
 
-  // Helper to get slots for any rack (used by AisleDoubleView)
+  // Helper to get slots for any rack
   const getRackSlotsById = (rackId: number) => {
     const r = WAREHOUSE_RACKS.find(x => x.id === rackId);
     if (!r) return [];
@@ -153,8 +151,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* Top Navigation Bar */}
+    <div className="min-h-screen bg-[#f1f5f9] text-slate-800 flex flex-col font-sans antialiased">
+      {/* CIAL Brand Header */}
       <Navbar
         totalSlots={globalWarehouseStats.totalSlots}
         occupiedSlots={globalWarehouseStats.occupiedSlots}
@@ -188,16 +186,16 @@ export default function App() {
 
       {/* Audit Mode Banner Indicator */}
       {auditMode && (
-        <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2 flex items-center justify-between text-xs text-amber-200">
-          <div className="flex items-center gap-2 font-medium">
-            <ClipboardCheck className="w-4 h-4 text-amber-400 animate-pulse" />
+        <div className="bg-amber-100 border-b border-amber-300 px-4 py-2.5 flex items-center justify-between text-xs text-amber-950 shadow-xs">
+          <div className="flex items-center gap-2 font-bold">
+            <ClipboardCheck className="w-4 h-4 text-amber-600 animate-pulse" />
             <span>
-              <strong>MODO AUDITORÍA ACTIVO:</strong> Haz clic o toca cualquier posición para verificar físico vs sistémico y registrar hallazgos.
+              MODO AUDITORÍA ACTIVO: Haz clic en cualquier posición del rack para verificar físico vs sistémico y registrar discrepancias.
             </span>
           </div>
           <button
             onClick={() => setIsReportOpen(true)}
-            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded font-bold text-[11px] transition-all cursor-pointer"
+            className="px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-lg font-black text-xs transition-all shadow-xs cursor-pointer"
           >
             Ver Informe ({auditFindings.size})
           </button>
@@ -232,23 +230,25 @@ export default function App() {
       </main>
 
       {/* Footer info bar */}
-      <footer className="bg-slate-900/60 border-t border-slate-800/80 px-4 py-3 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span>Auditoría Almacenamiento v1.0 • CIAL Alimentos CD San Jorge</span>
+      <footer className="bg-white border-t border-slate-200 px-4 py-3 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2 shadow-xs">
+        <div className="flex items-center gap-2 font-medium">
+          <span className="font-bold text-[#0a5c36]">Auditoría Almacenamiento v1.0</span>
           <span>•</span>
-          <span>29 Racks Activos • 3.447 Posiciones Mapeadas</span>
+          <span>CIAL Alimentos CD San Jorge</span>
+          <span>•</span>
+          <span>29 Racks Activos</span>
         </div>
-        <div className="flex items-center gap-3 text-slate-400">
+        <div className="flex items-center gap-3 text-slate-600 font-semibold">
           <button
             onClick={() => setIsImportOpen(true)}
-            className="hover:text-cyan-400 transition-colors cursor-pointer"
+            className="hover:text-[#0a5c36] transition-colors cursor-pointer"
           >
             Pegar Data SAP
           </button>
           <span>•</span>
           <button
             onClick={() => setIsReportOpen(true)}
-            className="hover:text-cyan-400 transition-colors cursor-pointer"
+            className="hover:text-[#0a5c36] transition-colors cursor-pointer"
           >
             Generar Informe de Validación
           </button>

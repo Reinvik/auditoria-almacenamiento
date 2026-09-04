@@ -1,11 +1,11 @@
 import React from 'react';
 import { SlotData, AuditFinding, RackConfig } from '../types/warehouse';
 import { ViewMode, FilterType } from './RackTabs';
-import { Check, AlertCircle, AlertTriangle, HelpCircle, Layers } from 'lucide-react';
+import { Check } from 'lucide-react';
 
 interface RackGridViewProps {
   rack: RackConfig;
-  slotsGrid: SlotData[][]; // [row_index = module][col_index = level 6 to 1]
+  slotsGrid: SlotData[][];
   viewMode: ViewMode;
   filterType: FilterType;
   searchQuery: string;
@@ -21,7 +21,6 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
   filterType,
   searchQuery,
   auditFindings,
-  auditMode,
   onSlotClick,
 }) => {
   const query = searchQuery.trim().toLowerCase();
@@ -56,122 +55,118 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
 
     if (finding.discrepancyType === 'NONE') {
       return (
-        <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] shadow">
+        <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] shadow-sm">
           <Check className="w-2.5 h-2.5 stroke-[3]" />
         </span>
       );
     }
     if (finding.discrepancyType === 'FALTA_FISICA') {
       return (
-        <span className="absolute top-1 right-1 px-1 py-0.2 rounded bg-rose-600 text-white flex items-center gap-0.5 text-[9px] font-black shadow">
+        <span className="absolute top-1 right-1 px-1 py-0.2 rounded bg-rose-600 text-white flex items-center gap-0.5 text-[9px] font-black shadow-sm">
           FALTA
         </span>
       );
     }
     if (finding.discrepancyType === 'SOBRA_FISICA') {
       return (
-        <span className="absolute top-1 right-1 px-1 py-0.2 rounded bg-amber-500 text-slate-950 flex items-center gap-0.5 text-[9px] font-black shadow">
+        <span className="absolute top-1 right-1 px-1 py-0.2 rounded bg-amber-500 text-slate-950 flex items-center gap-0.5 text-[9px] font-black shadow-sm">
           SOBRA
         </span>
       );
     }
     return (
-      <span className="absolute top-1 right-1 px-1 py-0.2 rounded bg-blue-600 text-white flex items-center gap-0.5 text-[9px] font-black shadow">
+      <span className="absolute top-1 right-1 px-1 py-0.2 rounded bg-blue-600 text-white flex items-center gap-0.5 text-[9px] font-black shadow-sm">
         DIF
       </span>
     );
   };
 
   // ══════════════════════════════════════════════════════════════════════════
-  // MODO 1: FORMATO AUDITORÍA (EXCEL CIAL)
-  // Idéntico a la captura de pantalla: Col 1 = Módulo, Col 2..7 = Nivel 6 a 1
+  // MODO 1: FORMATO AUDITORÍA (EXCEL OFICIAL CIAL)
+  // Idéntico a la planilla de auditoría: Col 1 = Módulo, Col 2..7 = Nivel 6 a 1
   // ══════════════════════════════════════════════════════════════════════════
   if (viewMode === 'audit_excel') {
     return (
       <div className="w-full overflow-x-auto pb-8">
         <div className="inline-block min-w-full align-middle">
-          <table className="border-collapse text-center select-none shadow-xl mx-auto">
-            {/* Encabezado negro idéntico a Excel */}
-            <thead>
-              <tr className="bg-black text-white font-black text-sm tracking-wider">
-                <th className="border border-slate-700 px-4 py-2.5 text-base w-24 bg-white text-black font-extrabold">
-                  {rack.id}
-                </th>
-                <th className="border border-slate-700 px-4 py-2.5 w-28 text-white">Nivel 6</th>
-                <th className="border border-slate-700 px-4 py-2.5 w-28 text-white">Nivel 5</th>
-                <th className="border border-slate-700 px-4 py-2.5 w-28 text-white">Nivel 4</th>
-                <th className="border border-slate-700 px-4 py-2.5 w-28 text-white">Nivel 3</th>
-                <th className="border border-slate-700 px-4 py-2.5 w-28 text-white">Nivel 2</th>
-                <th className="border border-slate-700 px-4 py-2.5 w-28 text-white">Nivel 1</th>
-              </tr>
-            </thead>
-            <tbody>
-              {slotsGrid.map((rowSlots, rowIdx) => {
-                const moduloCode = rack.modules[rowIdx];
-                return (
-                  <tr key={moduloCode} className="hover:bg-slate-800/40 transition-colors">
-                    {/* Código de Módulo (ej: 00801) */}
-                    <td className="border border-slate-600/80 bg-white text-black font-extrabold text-sm py-1.5 px-3 tracking-wide select-text">
-                      {moduloCode}
-                    </td>
+          <div className="bg-white p-3 rounded-2xl shadow-md border border-slate-200">
+            <table className="border-collapse text-center select-none mx-auto">
+              {/* Encabezado negro idéntico a Excel */}
+              <thead>
+                <tr className="bg-black text-white font-black text-sm tracking-wider">
+                  <th className="border border-slate-700 px-4 py-2.5 text-base w-24 bg-white text-black font-black">
+                    {rack.id}
+                  </th>
+                  <th className="border border-slate-700 px-4 py-2.5 w-28 text-white">Nivel 6</th>
+                  <th className="border border-slate-700 px-4 py-2.5 w-28 text-white">Nivel 5</th>
+                  <th className="border border-slate-700 px-4 py-2.5 w-28 text-white">Nivel 4</th>
+                  <th className="border border-slate-700 px-4 py-2.5 w-28 text-white">Nivel 3</th>
+                  <th className="border border-slate-700 px-4 py-2.5 w-28 text-white">Nivel 2</th>
+                  <th className="border border-slate-700 px-4 py-2.5 w-28 text-white">Nivel 1</th>
+                </tr>
+              </thead>
+              <tbody>
+                {slotsGrid.map((rowSlots, rowIdx) => {
+                  const moduloCode = rack.modules[rowIdx];
+                  return (
+                    <tr key={moduloCode} className="hover:bg-slate-50 transition-colors">
+                      {/* Código de Módulo (ej: 00801) */}
+                      <td className="border border-slate-400 bg-white text-black font-black text-xs py-1.5 px-3 tracking-wide select-text">
+                        {moduloCode}
+                      </td>
 
-                    {/* Las 6 celdas de Niveles (Nivel 6 a Nivel 1) */}
-                    {rowSlots.map((slot) => {
-                      const searchMatch = isSearchMatch(slot);
-                      const filterActive = isFilterActive(slot);
-                      const finding = auditFindings.get(slot.ubicacion);
+                      {/* Las 6 celdas de Niveles (Nivel 6 a Nivel 1) */}
+                      {rowSlots.map((slot) => {
+                        const searchMatch = isSearchMatch(slot);
+                        const filterActive = isFilterActive(slot);
 
-                      // Estilos idénticos a la imagen de auditoría
-                      let cellClass = '';
-                      let textClass = '';
+                        let cellClass = '';
+                        let textClass = '';
 
-                      if (slot.isEmpty) {
-                        // Vacio: Fondo negro sólido, texto blanco negrita
-                        cellClass = 'bg-black text-white hover:bg-slate-900 border-slate-700';
-                        textClass = 'font-bold text-xs tracking-wider';
-                      } else {
-                        // Ocupado: Fondo blanco puro, texto negro negrita
-                        cellClass = 'bg-white text-black hover:bg-slate-100 border-slate-400';
-                        textClass = 'font-extrabold text-xs tracking-tight';
-                      }
+                        if (slot.isEmpty) {
+                          // Vacio: Fondo negro sólido, texto blanco negrita (exacto como en el Excel)
+                          cellClass = 'bg-black text-white hover:bg-slate-900 border-slate-700';
+                          textClass = 'font-bold text-xs tracking-wider';
+                        } else {
+                          // Ocupado: Fondo blanco puro, texto negro negrita
+                          cellClass = 'bg-white text-black hover:bg-emerald-50/60 border-slate-400 shadow-2xs';
+                          textClass = 'font-extrabold text-xs tracking-tight';
+                        }
 
-                      // Opacidad si no coincide con el filtro activo
-                      const opacityClass = filterActive ? 'opacity-100' : 'opacity-20 hover:opacity-100';
+                        const opacityClass = filterActive ? 'opacity-100' : 'opacity-20 hover:opacity-100';
 
-                      // Resaltado si coincide con la búsqueda
-                      const highlightClass = searchMatch 
-                        ? 'ring-4 ring-cyan-400 scale-[1.03] z-10 shadow-lg shadow-cyan-500/50 !opacity-100' 
-                        : '';
+                        const highlightClass = searchMatch 
+                          ? 'ring-4 ring-emerald-500 scale-[1.03] z-10 shadow-lg shadow-emerald-500/50 !opacity-100' 
+                          : '';
 
-                      return (
-                        <td
-                          key={slot.ubicacion}
-                          onClick={() => onSlotClick(slot)}
-                          title={`${slot.ubicacion} • ${slot.isEmpty ? 'Vacío' : `${slot.displayText} - ${slot.items[0]?.descripcion || ''}`}`}
-                          className={`relative border py-2 px-2 cursor-pointer transition-all duration-150 select-none ${cellClass} ${opacityClass} ${highlightClass}`}
-                        >
-                          <div className="flex flex-col items-center justify-center min-h-[30px]">
-                            <span className={textClass}>
-                              {slot.displayText}
-                            </span>
-                            {/* Alerta si está en transfer */}
-                            {slot.hasTransfer && (
-                              <span className="text-[9px] font-black text-amber-600 uppercase tracking-tighter">
-                                TRANSF
+                        return (
+                          <td
+                            key={slot.ubicacion}
+                            onClick={() => onSlotClick(slot)}
+                            title={`${slot.ubicacion} • ${slot.isEmpty ? 'Vacío' : `${slot.displayText} - ${slot.items[0]?.descripcion || ''}`}`}
+                            className={`relative border py-2 px-2 cursor-pointer transition-all duration-150 select-none ${cellClass} ${opacityClass} ${highlightClass}`}
+                          >
+                            <div className="flex flex-col items-center justify-center min-h-[30px]">
+                              <span className={textClass}>
+                                {slot.displayText}
                               </span>
-                            )}
-                          </div>
+                              {slot.hasTransfer && (
+                                <span className="text-[9px] font-black text-amber-600 uppercase tracking-tighter">
+                                  TRANSF
+                                </span>
+                              )}
+                            </div>
 
-                          {/* Badge de Auditoría */}
-                          {renderAuditBadge(slot)}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                            {renderAuditBadge(slot)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     );
@@ -186,16 +181,16 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
   return (
     <div className="w-full overflow-x-auto pb-8 px-2">
       <div className="inline-block min-w-full">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-2xl space-y-3">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-lg space-y-3">
           {/* Header con módulos */}
           <div className="flex items-center gap-1.5 ml-20">
             {rack.modules.map((m, idx) => (
               <div 
                 key={m} 
-                className="w-20 text-center font-bold text-[10px] text-slate-400 bg-slate-950 py-1 rounded border border-slate-800"
+                className="w-20 text-center font-black text-[10px] text-[#08482a] bg-[#e6f4ea] py-1 rounded-lg border border-[#a3cfb6]"
               >
                 M.{idx + 1}
-                <div className="text-[9px] text-slate-500">{m.slice(3)}</div>
+                <div className="text-[9px] text-[#0a5c36] font-mono">{m.slice(3)}</div>
               </div>
             ))}
           </div>
@@ -205,33 +200,35 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
             {levels.map((lvl, lvlIdx) => {
               return (
                 <div key={lvl} className="flex items-center gap-1.5">
-                  {/* Etiqueta lateral del Nivel */}
-                  <div className="w-18 flex items-center justify-center font-black text-xs text-cyan-300 bg-slate-950 border border-slate-800 rounded-lg py-3 shadow">
+                  {/* Etiqueta lateral del Nivel con Verde CIAL */}
+                  <div className="w-20 flex items-center justify-center font-black text-xs text-white bg-[#0a5c36] rounded-xl py-3 shadow-sm border border-[#08482a]">
                     Nivel {lvl}
                   </div>
 
                   {/* Celdas por módulo */}
                   <div className="flex items-center gap-1.5">
                     {slotsGrid.map((rowSlots) => {
-                      const slot = rowSlots[lvlIdx]; // lvlIdx 0=6, 1=5, 2=4, 3=3, 4=2, 5=1
+                      const slot = rowSlots[lvlIdx];
                       const searchMatch = isSearchMatch(slot);
                       const filterActive = isFilterActive(slot);
 
-                      let cellBg = slot.isEmpty ? 'bg-black text-white border-slate-800' : 'bg-white text-black border-slate-300';
+                      let cellBg = slot.isEmpty 
+                        ? 'bg-black text-white border-slate-800' 
+                        : 'bg-white text-black border-slate-300 hover:border-[#0a5c36]';
                       const opacity = filterActive ? 'opacity-100' : 'opacity-20';
-                      const ring = searchMatch ? 'ring-4 ring-cyan-400 z-10 scale-105' : '';
+                      const ring = searchMatch ? 'ring-4 ring-emerald-500 z-10 scale-105 shadow-md shadow-emerald-500/30' : '';
 
                       return (
                         <div
                           key={slot.ubicacion}
                           onClick={() => onSlotClick(slot)}
                           title={`${slot.ubicacion} • ${slot.displayText}`}
-                          className={`relative w-20 h-14 rounded-md border flex flex-col items-center justify-center cursor-pointer transition-all ${cellBg} ${opacity} ${ring} hover:scale-105 shadow`}
+                          className={`relative w-20 h-14 rounded-lg border flex flex-col items-center justify-center cursor-pointer transition-all ${cellBg} ${opacity} ${ring} hover:scale-105 shadow-xs`}
                         >
                           <span className={`text-[11px] font-extrabold leading-tight text-center px-1 ${slot.isEmpty ? 'text-white' : 'text-black'}`}>
                             {slot.displayText}
                           </span>
-                          <span className="text-[8px] opacity-60 font-mono">
+                          <span className="text-[8.5px] opacity-60 font-mono">
                             {slot.ubicacion.slice(-4)}
                           </span>
 
