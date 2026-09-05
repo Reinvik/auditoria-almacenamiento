@@ -113,7 +113,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Global Warehouse Stats Summary */}
-        <div className="hidden 2xl:flex items-center gap-2.5 bg-[#08482a]/90 px-3 py-1.5 rounded-xl border border-white/10 text-xs shadow-inner shrink-0">
+        <div className="hidden xl:flex items-center gap-2 bg-[#08482a]/90 px-3 py-1.5 rounded-xl border border-white/10 text-xs shadow-inner shrink-0">
           <div className="flex items-center gap-1.5">
             <Boxes className="w-3.5 h-3.5 text-emerald-300" />
             <span className="text-emerald-200 font-medium">Capacidad:</span>
@@ -124,12 +124,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
             <span className="text-emerald-200 font-medium">Ocupadas:</span>
             <span className="font-black text-emerald-300">{occupiedSlots.toLocaleString()}</span>
-          </div>
-          <div className="w-px h-3 bg-emerald-700/60" />
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-slate-400" />
-            <span className="text-emerald-200 font-medium">Vacías:</span>
-            <span className="font-black text-white">{emptySlots.toLocaleString()}</span>
           </div>
           <div className="w-px h-3 bg-emerald-700/60" />
           <div className="flex items-center gap-1.5">
@@ -146,13 +140,13 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Actions & Search */}
-        <div className="hidden sm:flex items-center gap-2 flex-1 justify-end">
+        <div className="hidden sm:flex items-center gap-2.5 flex-1 justify-end">
           {/* Search Box */}
-          <div className="relative w-36 lg:w-48 xl:w-56 shrink-0">
+          <div className="relative w-40 lg:w-48 xl:w-56 shrink-0">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-300" />
             <input
               type="text"
-              placeholder="Buscar Material..."
+              placeholder="Buscar Material, Lote..."
               value={searchQuery}
               onChange={e => onSearchChange(e.target.value)}
               className="w-full bg-[#08482a] border border-emerald-600/60 rounded-xl pl-8 pr-7 py-1.5 text-xs text-white placeholder-emerald-300/60 focus:outline-none focus:border-emerald-300 focus:bg-[#073d23] transition-all shadow-inner"
@@ -168,40 +162,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Desktop action buttons */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* Ocupación Frío */}
-            {onOpenOccupancy && (
-              <button
-                onClick={onOpenOccupancy}
-                className="px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 bg-[#08482a] border border-emerald-600/60 text-emerald-100 hover:bg-[#063921] hover:text-white transition-all shadow-sm cursor-pointer"
-                title="Ver Reporte y Gráfico de Ocupación por Tipo de Frío (Congelados vs Refrigerados)"
-              >
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-300" />
-                <span>Ocupación</span>
-              </button>
-            )}
-
-            {/* Repartir Trabajo */}
-            <button
-              onClick={onOpenWorkload}
-              className="px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 bg-[#08482a] border border-emerald-600/60 text-emerald-100 hover:bg-[#063921] hover:text-white transition-all shadow-sm cursor-pointer"
-              title="Distribuir equitativamente el trabajo de auditoría entre auditores"
-            >
-              <Scale className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Repartir</span>
-            </button>
-
+          <div className="flex items-center gap-2 shrink-0">
             {/* Toggle Audit Mode */}
             <button
               onClick={onToggleAuditMode}
-              className={`px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all shadow-sm cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all shadow-sm cursor-pointer ${
                 auditMode
                   ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/30 ring-2 ring-amber-200'
                   : 'bg-[#08482a] border border-emerald-600/60 text-emerald-100 hover:bg-[#063921] hover:text-white'
               }`}
             >
               <ClipboardCheck className="w-3.5 h-3.5" />
-              <span>Auditoría</span>
+              <span>Modo Auditoría</span>
               {auditCount > 0 && (
                 <span className="ml-1 px-1.5 py-0.2 bg-slate-950 text-amber-300 rounded-full text-[10px] font-black">
                   {auditCount}
@@ -212,7 +184,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Open Report */}
             <button
               onClick={onOpenReport}
-              className="px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-white hover:bg-emerald-50 text-[#0a5c36] shadow-sm transition-all cursor-pointer"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-white hover:bg-emerald-50 text-[#0a5c36] shadow-sm transition-all cursor-pointer"
             >
               <FileText className="w-3.5 h-3.5 text-[#0a5c36]" />
               <span>Informe</span>
@@ -221,10 +193,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Import SAP / Excel */}
             <button
               onClick={onOpenImport}
-              className="px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 shadow-md shadow-emerald-950/40 transition-all cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 shadow-md shadow-emerald-950/40 transition-all cursor-pointer"
             >
               <Upload className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Cargar</span> SAP
+              <span>Cargar Data SAP</span>
             </button>
           </div>
 

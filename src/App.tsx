@@ -154,29 +154,6 @@ export default function App() {
 
   const [isWorkloadOpen, setIsWorkloadOpen] = useState<boolean>(false);
 
-  // 5. PWA Installation Event
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isInstallable, setIsInstallable] = useState(false);
-
-  useEffect(() => {
-    const handleBeforeInstall = (e: any) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setIsInstallable(true);
-    };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setIsInstallable(false);
-    }
-  };
-
   // 6. Modals
   const [selectedSlot, setSelectedSlot] = useState<SlotData | null>(null);
   const [isImportOpen, setIsImportOpen] = useState<boolean>(false);
@@ -391,22 +368,6 @@ export default function App() {
         onOpenOccupancy={() => setViewMode('occupancy_report')}
         activeAuditorName={currentAuditorAssignment?.name}
       />
-
-      {/* PWA Install Banner on Mobile (if supported) */}
-      {isInstallable && (
-        <div className="bg-[#08482a] text-white px-4 py-2 flex items-center justify-between text-xs border-b border-emerald-600/40">
-          <div className="flex items-center gap-2">
-            <Download className="w-4 h-4 text-emerald-300 animate-bounce" />
-            <span>Instala <strong>Auditoría Almacenamiento</strong> en tu teléfono</span>
-          </div>
-          <button
-            onClick={handleInstallClick}
-            className="px-2.5 py-1 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black rounded-lg text-[11px] shadow-xs cursor-pointer"
-          >
-            Instalar PWA
-          </button>
-        </div>
-      )}
 
       {/* Rack Selector & View Mode Switcher */}
       <RackTabs
