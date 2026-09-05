@@ -6,7 +6,8 @@ import {
   FileText, 
   Boxes,
   X,
-  Scale
+  Scale,
+  TrendingUp
 } from 'lucide-react';
 import cialLogo from '../assets/cial-alimentos-logo.png';
 
@@ -25,6 +26,7 @@ interface NavbarProps {
   onOpenReport: () => void;
   onResetData: () => void;
   onOpenWorkload: () => void;
+  onOpenOccupancy?: () => void;
   activeAuditorName?: string | null;
 }
 
@@ -42,12 +44,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenImport,
   onOpenReport,
   onOpenWorkload,
+  onOpenOccupancy,
   activeAuditorName,
 }) => {
 
   return (
     <header className="bg-[#0a5c36] text-white shadow-lg shadow-emerald-950/20 select-none shrink-0 sticky top-0 z-40 border-b border-[#08482a]">
-      <div className="max-w-7xl mx-auto px-4 py-2.5 flex flex-col md:flex-row items-center justify-between gap-3">
+      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 py-2.5 flex flex-col md:flex-row items-center justify-between gap-3">
         {/* CIAL Brand Header (Identical to Pallets Outbound & Dock Inbound) */}
         <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
           <div className="flex items-center gap-3">
@@ -73,6 +76,15 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Quick mobile buttons */}
           <div className="flex md:hidden items-center gap-1.5">
+            {onOpenOccupancy && (
+              <button
+                onClick={onOpenOccupancy}
+                className="p-2 rounded-lg bg-[#08482a] border border-emerald-700 text-emerald-100 hover:text-white"
+                title="Ocupación Frío"
+              >
+                <TrendingUp className="w-4 h-4 text-emerald-300" />
+              </button>
+            )}
             <button
               onClick={onOpenWorkload}
               className="p-2 rounded-lg bg-[#08482a] border border-emerald-700 text-emerald-100 hover:text-white"
@@ -157,6 +169,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Desktop action buttons */}
           <div className="hidden md:flex items-center gap-2">
+            {/* Ocupación Frío */}
+            {onOpenOccupancy && (
+              <button
+                onClick={onOpenOccupancy}
+                className="px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 bg-[#08482a] border border-emerald-600/60 text-emerald-100 hover:bg-[#063921] hover:text-white transition-all shadow-sm cursor-pointer"
+                title="Ver Reporte y Gráfico de Ocupación por Tipo de Frío (Congelados vs Refrigerados)"
+              >
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Ocupación Frío</span>
+              </button>
+            )}
+
             {/* Repartir Trabajo */}
             <button
               onClick={onOpenWorkload}

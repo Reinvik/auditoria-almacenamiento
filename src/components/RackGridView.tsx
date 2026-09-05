@@ -82,26 +82,26 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
   };
 
   // ══════════════════════════════════════════════════════════════════════════
-  // MODO 1: FORMATO AUDITORÍA (EXCEL OFICIAL CIAL) - STICKY PARA MÓVIL
+  // MODO 1: FORMATO AUDITORÍA (EXCEL OFICIAL CIAL) - STICKY Y ANCHO COMPLETO
   // ══════════════════════════════════════════════════════════════════════════
   if (viewMode === 'audit_excel') {
     return (
       <div className="w-full overflow-x-auto pb-16 sm:pb-8">
-        <div className="inline-block min-w-full align-middle">
-          <div className="bg-white p-2 sm:p-3 rounded-2xl shadow-md border border-slate-200">
-            <table className="border-collapse text-center select-none mx-auto w-full">
+        <div className="w-full min-w-full">
+          <div className="bg-white p-2 sm:p-4 rounded-2xl shadow-sm border border-slate-200 w-full">
+            <table className="border-collapse text-center select-none w-full table-fixed min-w-[700px]">
               {/* Encabezado negro idéntico a Excel - Sticky top */}
               <thead>
                 <tr className="bg-black text-white font-black text-sm tracking-wider sticky top-0 z-20 shadow-md">
-                  <th className="border border-slate-700 px-3 sm:px-4 py-2.5 text-base w-20 sm:w-24 bg-white text-black font-black sticky left-0 z-30 shadow-xs">
+                  <th className="border border-slate-700 px-2 sm:px-4 py-3 text-base w-[12%] sm:w-[10%] lg:w-[9%] bg-white text-black font-black sticky left-0 z-30 shadow-xs">
                     {rack.id}
                   </th>
-                  <th className="border border-slate-700 px-2 sm:px-4 py-2.5 w-24 sm:w-28 text-white text-xs sm:text-sm">Nivel 6</th>
-                  <th className="border border-slate-700 px-2 sm:px-4 py-2.5 w-24 sm:w-28 text-white text-xs sm:text-sm">Nivel 5</th>
-                  <th className="border border-slate-700 px-2 sm:px-4 py-2.5 w-24 sm:w-28 text-white text-xs sm:text-sm">Nivel 4</th>
-                  <th className="border border-slate-700 px-2 sm:px-4 py-2.5 w-24 sm:w-28 text-white text-xs sm:text-sm">Nivel 3</th>
-                  <th className="border border-slate-700 px-2 sm:px-4 py-2.5 w-24 sm:w-28 text-white text-xs sm:text-sm">Nivel 2</th>
-                  <th className="border border-slate-700 px-2 sm:px-4 py-2.5 w-24 sm:w-28 text-white text-xs sm:text-sm">Nivel 1</th>
+                  <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[14.6%] text-white text-xs sm:text-sm">Nivel 6</th>
+                  <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[14.6%] text-white text-xs sm:text-sm">Nivel 5</th>
+                  <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[14.6%] text-white text-xs sm:text-sm">Nivel 4</th>
+                  <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[14.6%] text-white text-xs sm:text-sm">Nivel 3</th>
+                  <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[14.6%] text-white text-xs sm:text-sm">Nivel 2</th>
+                  <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[14.6%] text-white text-xs sm:text-sm">Nivel 1</th>
                 </tr>
               </thead>
               <tbody>
@@ -110,7 +110,7 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
                   return (
                     <tr key={moduloCode} className="hover:bg-slate-50 transition-colors">
                       {/* Código de Módulo (ej: 00801) - Sticky left */}
-                      <td className="border border-slate-400 bg-white text-black font-black text-xs py-2 px-2.5 sm:px-3 tracking-wide select-text sticky left-0 z-10 shadow-xs">
+                      <td className="border border-slate-400 bg-white text-black font-black text-xs sm:text-sm py-2 px-2 sm:px-3 tracking-wide select-text sticky left-0 z-10 shadow-xs">
                         {moduloCode}
                       </td>
 
@@ -124,10 +124,10 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
 
                         if (slot.isEmpty) {
                           cellClass = 'bg-black text-white hover:bg-slate-900 border-slate-700 active:scale-98';
-                          textClass = 'font-bold text-xs tracking-wider';
+                          textClass = 'font-bold text-xs sm:text-sm tracking-wider';
                         } else {
                           cellClass = 'bg-white text-black hover:bg-emerald-50/60 border-slate-400 shadow-2xs active:scale-98';
-                          textClass = 'font-extrabold text-xs tracking-tight';
+                          textClass = 'font-extrabold text-xs sm:text-sm tracking-tight';
                         }
 
                         const opacityClass = filterActive ? 'opacity-100' : 'opacity-20 hover:opacity-100';
@@ -141,14 +141,14 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
                             key={slot.ubicacion}
                             onClick={() => onSlotClick(slot)}
                             title={`${slot.ubicacion} • ${slot.isEmpty ? 'Vacío' : `${slot.displayText} - ${slot.items[0]?.descripcion || ''}`}`}
-                            className={`relative border py-2.5 px-2 cursor-pointer transition-all duration-150 select-none ${cellClass} ${opacityClass} ${highlightClass}`}
+                            className={`relative border py-3 sm:py-3.5 px-2 cursor-pointer transition-all duration-150 select-none ${cellClass} ${opacityClass} ${highlightClass}`}
                           >
-                            <div className="flex flex-col items-center justify-center min-h-[34px]">
+                            <div className="flex flex-col items-center justify-center min-h-[38px] sm:min-h-[46px]">
                               <span className={textClass}>
                                 {slot.displayText}
                               </span>
                               {slot.hasTransfer && (
-                                <span className="text-[9px] font-black text-amber-600 uppercase tracking-tighter">
+                                <span className="text-[9px] font-black text-amber-600 uppercase tracking-tighter mt-0.5">
                                   TRANSF
                                 </span>
                               )}

@@ -18,6 +18,7 @@ import { CellDetailModal } from './components/CellDetailModal';
 import { DataImportModal } from './components/DataImportModal';
 import { ReportModal } from './components/ReportModal';
 import { WorkloadModal } from './components/WorkloadModal';
+import { OccupancyReportView } from './components/OccupancyReportView';
 import { 
   ClipboardCheck, 
   Download, 
@@ -387,6 +388,7 @@ export default function App() {
         onOpenReport={() => setIsReportOpen(true)}
         onResetData={handleRestoreDefaultStock}
         onOpenWorkload={() => setIsWorkloadOpen(true)}
+        onOpenOccupancy={() => setViewMode('occupancy_report')}
         activeAuditorName={currentAuditorAssignment?.name}
       />
 
@@ -497,8 +499,10 @@ export default function App() {
       )}
 
       {/* Main Rack View Area */}
-      <main className="flex-1 p-2 sm:p-4 max-w-7xl mx-auto w-full">
-        {viewMode === 'double_aisle' ? (
+      <main className="flex-1 p-3 sm:p-6 max-w-[1920px] mx-auto w-full">
+        {viewMode === 'occupancy_report' ? (
+          <OccupancyReportView stockIndex={stockIndex} />
+        ) : viewMode === 'double_aisle' ? (
           <AisleDoubleView
             aisles={visibleAisles}
             allRacks={WAREHOUSE_RACKS}

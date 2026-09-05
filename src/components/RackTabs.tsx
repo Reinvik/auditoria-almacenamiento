@@ -11,7 +11,8 @@ import {
   Building2,
   Snowflake,
   Check,
-  X
+  X,
+  TrendingUp
 } from 'lucide-react';
 import { 
   RackConfig, 
@@ -20,7 +21,7 @@ import {
   WorkloadDistributionConfig 
 } from '../types/warehouse';
 
-export type ViewMode = 'audit_excel' | 'elevation_wall' | 'double_aisle';
+export type ViewMode = 'audit_excel' | 'elevation_wall' | 'double_aisle' | 'occupancy_report';
 export type FilterType = 'ALL' | 'ONLY_EMPTY' | 'ONLY_OCCUPIED' | 'MULTI_PALLETS' | 'WITH_DISCREPANCIES';
 
 interface RackTabsProps {
@@ -134,9 +135,10 @@ export const RackTabs: React.FC<RackTabsProps> = ({
   const nextRack = currentIndex < visibleRacks.length - 1 ? visibleRacks[currentIndex + 1] : null;
 
   return (
-    <div className="bg-white border-b border-slate-200 px-4 py-2.5 space-y-2.5 shadow-sm">
-      {/* Top Row: Rack Switcher & View Mode Toggles */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5 shadow-sm w-full">
+      <div className="max-w-[1920px] mx-auto space-y-2.5">
+        {/* Top Row: Rack Switcher & View Mode Toggles */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Rack Navigation / Dropdown */}
         <div className="flex items-center gap-2">
           <button
@@ -221,6 +223,20 @@ export const RackTabs: React.FC<RackTabsProps> = ({
             <SplitSquareVertical className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Pasillo Doble</span>
             <span className="sm:hidden">Pasillo</span>
+          </button>
+
+          <button
+            onClick={() => onChangeViewMode('occupancy_report')}
+            className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              viewMode === 'occupancy_report'
+                ? 'bg-[#0a5c36] text-white shadow-sm ring-1 ring-emerald-300'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+            title="Reporte gráfico de ocupación por tipo de frío (Congelados vs Refrigerados)"
+          >
+            <TrendingUp className="w-3.5 h-3.5 text-emerald-300" />
+            <span className="hidden sm:inline">Ocupación Frío</span>
+            <span className="sm:hidden">Ocupación</span>
           </button>
         </div>
 
@@ -427,6 +443,7 @@ export const RackTabs: React.FC<RackTabsProps> = ({
             </button>
           );
         })}
+        </div>
       </div>
     </div>
   );
