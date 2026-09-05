@@ -146,7 +146,7 @@ export const WorkloadModal: React.FC<WorkloadModalProps> = ({
                   Refrigerado
                 </span>
                 <span className="text-[10px] text-slate-500 font-bold">
-                  Pasillos 9 al 15 (13 Racks)
+                  Racks 9 al 29 (Pasillos 5-15)
                 </span>
               </button>
 
@@ -172,7 +172,7 @@ export const WorkloadModal: React.FC<WorkloadModalProps> = ({
                   Congelado
                 </span>
                 <span className="text-[10px] text-slate-500 font-bold">
-                  Pasillos 1 al 8 (16 Racks)
+                  Racks 1 al 8 (Pasillos 1-4)
                 </span>
               </button>
 
@@ -198,9 +198,10 @@ export const WorkloadModal: React.FC<WorkloadModalProps> = ({
                   Todo el CD
                 </span>
                 <span className="text-[10px] text-slate-500 font-bold">
-                  Pasillos 1 al 15 (29 Racks)
+                  Racks 1 al 29 (Pasillos 1-15)
                 </span>
               </button>
+
             </div>
           </div>
 

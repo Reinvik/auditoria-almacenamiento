@@ -30,30 +30,30 @@ export interface AisleWorkload {
 
 /**
  * Retorna los pasillos que pertenecen a una zona determinada.
- * Congelado: Pasillos 1 al 8.
- * Refrigerado: Pasillos 9 al 15.
+ * Congelado: Pasillos 1 al 4 (Racks 1 al 8).
+ * Refrigerado: Pasillos 5 al 15 (Racks 9 al 29).
  */
 export function getAislesForZone(zone: WarehouseZone): AislePair[] {
   if (zone === 'CONGELADO') {
-    return DEFAULT_AISLES.filter(a => a.id >= 1 && a.id <= 8);
+    return DEFAULT_AISLES.filter(a => a.id >= 1 && a.id <= 4);
   }
   if (zone === 'REFRIGERADO') {
-    return DEFAULT_AISLES.filter(a => a.id >= 9 && a.id <= 15);
+    return DEFAULT_AISLES.filter(a => a.id >= 5 && a.id <= 15);
   }
   return DEFAULT_AISLES;
 }
 
 /**
  * Retorna los racks que pertenecen a una zona determinada.
- * Congelado: Racks 1 al 16.
- * Refrigerado: Racks 17 al 29.
+ * Congelado: Racks 1 al 8.
+ * Refrigerado: Racks 9 al 29.
  */
 export function getRacksForZone(zone: WarehouseZone): RackConfig[] {
   if (zone === 'CONGELADO') {
-    return WAREHOUSE_RACKS.filter(r => r.id >= 1 && r.id <= 16);
+    return WAREHOUSE_RACKS.filter(r => r.id >= 1 && r.id <= 8);
   }
   if (zone === 'REFRIGERADO') {
-    return WAREHOUSE_RACKS.filter(r => r.id >= 17 && r.id <= 29);
+    return WAREHOUSE_RACKS.filter(r => r.id >= 9 && r.id <= 29);
   }
   return WAREHOUSE_RACKS;
 }
@@ -63,8 +63,8 @@ export function getRacksForZone(zone: WarehouseZone): RackConfig[] {
  */
 export function isRackInZone(rackId: number, zone: WarehouseZone): boolean {
   if (zone === 'ALL') return true;
-  if (zone === 'CONGELADO') return rackId >= 1 && rackId <= 16;
-  if (zone === 'REFRIGERADO') return rackId >= 17 && rackId <= 29;
+  if (zone === 'CONGELADO') return rackId >= 1 && rackId <= 8;
+  if (zone === 'REFRIGERADO') return rackId >= 9 && rackId <= 29;
   return true;
 }
 
@@ -73,10 +73,11 @@ export function isRackInZone(rackId: number, zone: WarehouseZone): boolean {
  */
 export function isAisleInZone(aisleId: number, zone: WarehouseZone): boolean {
   if (zone === 'ALL') return true;
-  if (zone === 'CONGELADO') return aisleId >= 1 && aisleId <= 8;
-  if (zone === 'REFRIGERADO') return aisleId >= 9 && aisleId <= 15;
+  if (zone === 'CONGELADO') return aisleId >= 1 && aisleId <= 4;
+  if (zone === 'REFRIGERADO') return aisleId >= 5 && aisleId <= 15;
   return true;
 }
+
 
 /**
  * Calcula la carga de trabajo detallada por cada pasillo en la zona seleccionada.
@@ -264,10 +265,11 @@ export function calculateOptimalWorkloadDistribution(
  */
 export function generateWorkloadShareText(config: WorkloadDistributionConfig): string {
   const zoneName = config.zone === 'CONGELADO' 
-    ? 'CÁMARA CONGELADO (Pasillos 1 al 8)' 
+    ? 'CÁMARA CONGELADO (Racks 1 al 8 • Pasillos 1 al 4)' 
     : config.zone === 'REFRIGERADO' 
-      ? 'CÁMARA REFRIGERADO (Pasillos 9 al 15)' 
-      : 'ALMACÉN COMPLETO (Pasillos 1 al 15)';
+      ? 'CÁMARA REFRIGERADO (Racks 9 al 29 • Pasillos 5 al 15)' 
+      : 'ALMACÉN COMPLETO (Racks 1 al 29 • Pasillos 1 al 15)';
+
 
   const metricLabel = config.balanceMetric === 'totalSlots' 
     ? 'Posiciones Físicas' 

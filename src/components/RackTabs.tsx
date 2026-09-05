@@ -83,10 +83,10 @@ export const RackTabs: React.FC<RackTabsProps> = ({
       return racks.filter(r => activeAssignment.rackIds.includes(r.id));
     }
     if (activeZone === 'CONGELADO') {
-      return racks.filter(r => r.id <= 16);
+      return racks.filter(r => r.id <= 8);
     }
     if (activeZone === 'REFRIGERADO') {
-      return racks.filter(r => r.id >= 17);
+      return racks.filter(r => r.id >= 9);
     }
     return racks;
   }, [racks, activeAssignment, activeZone]);
@@ -97,13 +97,14 @@ export const RackTabs: React.FC<RackTabsProps> = ({
       return aisles.filter(a => activeAssignment.aisleIds.includes(a.id));
     }
     if (activeZone === 'CONGELADO') {
-      return aisles.filter(a => a.id <= 8);
+      return aisles.filter(a => a.id <= 4);
     }
     if (activeZone === 'REFRIGERADO') {
-      return aisles.filter(a => a.id >= 9);
+      return aisles.filter(a => a.id >= 5);
     }
     return aisles;
   }, [aisles, activeAssignment, activeZone]);
+
 
   // Auto-seleccionar primer rack visible si el actual no pertenece a la selección
   useEffect(() => {
@@ -299,10 +300,10 @@ export const RackTabs: React.FC<RackTabsProps> = ({
                 ? 'bg-[#0a5c36] text-white shadow-xs ring-1 ring-emerald-500'
                 : 'bg-slate-100 text-slate-700 hover:bg-[#e6f4ea] hover:text-[#0a5c36]'
             }`}
-            title="Pasillos 1 al 8 • Racks 1 al 16 (1 persona)"
+            title="Racks 1 al 8 • Pasillos 1 al 4 (1 persona)"
           >
             <Snowflake className="w-3.5 h-3.5 text-sky-500" />
-            <span>❄️ Congelado (P1-8)</span>
+            <span>❄️ Congelado (R1-8)</span>
           </button>
 
           <button
@@ -315,10 +316,11 @@ export const RackTabs: React.FC<RackTabsProps> = ({
                 ? 'bg-[#0a5c36] text-white shadow-xs ring-1 ring-emerald-500'
                 : 'bg-slate-100 text-slate-700 hover:bg-[#e6f4ea] hover:text-[#0a5c36]'
             }`}
-            title="Pasillos 9 al 15 • Racks 17 al 29 (Auditores variables)"
+            title="Racks 9 al 29 • Pasillos 5 al 15 (Auditores variables)"
           >
-            <span>🧊 Refrigerado (P9+)</span>
+            <span>🧊 Refrigerado (R9+)</span>
           </button>
+
         </div>
 
         {/* Filtro por Auditor & Botón Repartir */}

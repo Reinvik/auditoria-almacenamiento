@@ -215,10 +215,10 @@ export default function App() {
       return WAREHOUSE_RACKS.filter(r => currentAuditorAssignment.rackIds.includes(r.id));
     }
     if (activeZone === 'CONGELADO') {
-      return WAREHOUSE_RACKS.filter(r => r.id <= 16);
+      return WAREHOUSE_RACKS.filter(r => r.id <= 8);
     }
     if (activeZone === 'REFRIGERADO') {
-      return WAREHOUSE_RACKS.filter(r => r.id >= 17);
+      return WAREHOUSE_RACKS.filter(r => r.id >= 9);
     }
     return WAREHOUSE_RACKS;
   }, [currentAuditorAssignment, activeZone]);
@@ -229,13 +229,14 @@ export default function App() {
       return DEFAULT_AISLES.filter(a => currentAuditorAssignment.aisleIds.includes(a.id));
     }
     if (activeZone === 'CONGELADO') {
-      return DEFAULT_AISLES.filter(a => a.id <= 8);
+      return DEFAULT_AISLES.filter(a => a.id <= 4);
     }
     if (activeZone === 'REFRIGERADO') {
-      return DEFAULT_AISLES.filter(a => a.id >= 9);
+      return DEFAULT_AISLES.filter(a => a.id >= 5);
     }
     return DEFAULT_AISLES;
   }, [currentAuditorAssignment, activeZone]);
+
 
   // Auto-selección cuando cambia el filtro
   useEffect(() => {
