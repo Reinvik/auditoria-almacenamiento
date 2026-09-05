@@ -93,15 +93,15 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
               {/* Encabezado negro idéntico a Excel - Sticky top */}
               <thead>
                 <tr className="bg-black text-white font-black text-sm tracking-wider sticky top-0 z-20 shadow-md">
-                  <th className="border border-slate-700 px-2 sm:px-4 py-3 text-base w-[12%] sm:w-[10%] lg:w-[9%] bg-white text-black font-black sticky left-0 z-30 shadow-xs">
+                  <th className="border border-slate-700 px-2 sm:px-4 py-3 text-base w-[10%] bg-white text-black font-black sticky left-0 z-30 shadow-xs">
                     {rack.id}
                   </th>
-                  <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[14.6%] text-white text-xs sm:text-sm">Nivel 6</th>
-                  <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[14.6%] text-white text-xs sm:text-sm">Nivel 5</th>
-                  <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[14.6%] text-white text-xs sm:text-sm">Nivel 4</th>
-                  <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[14.6%] text-white text-xs sm:text-sm">Nivel 3</th>
-                  <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[14.6%] text-white text-xs sm:text-sm">Nivel 2</th>
-                  <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[14.6%] text-white text-xs sm:text-sm">Nivel 1</th>
+                  <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[15%] text-white text-xs sm:text-sm">Nivel 6</th>
+                  <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[15%] text-white text-xs sm:text-sm">Nivel 5</th>
+                  <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[15%] text-white text-xs sm:text-sm">Nivel 4</th>
+                  <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[15%] text-white text-xs sm:text-sm">Nivel 3</th>
+                  <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[15%] text-white text-xs sm:text-sm">Nivel 2</th>
+                  <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[15%] text-white text-xs sm:text-sm">Nivel 1</th>
                 </tr>
               </thead>
               <tbody>

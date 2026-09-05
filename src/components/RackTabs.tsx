@@ -122,10 +122,15 @@ export const RackTabs: React.FC<RackTabsProps> = ({
   }, [visibleAisles, selectedAisleId, onSelectAisle]);
 
   useEffect(() => {
-    if (tabsContainerRef.current) {
-      const activeTabEl = tabsContainerRef.current.querySelector('[data-active="true"]');
+    const container = tabsContainerRef.current;
+    if (container) {
+      const activeTabEl = container.querySelector('[data-active="true"]') as HTMLElement | null;
       if (activeTabEl) {
-        activeTabEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        const containerRect = container.getBoundingClientRect();
+        const tabRect = activeTabEl.getBoundingClientRect();
+        const offsetLeft = tabRect.left - containerRect.left + container.scrollLeft;
+        const targetScrollLeft = offsetLeft - (container.clientWidth / 2) + (tabRect.width / 2);
+        container.scrollTo({ left: Math.max(0, targetScrollLeft), behavior: 'smooth' });
       }
     }
   }, [selectedRackId]);

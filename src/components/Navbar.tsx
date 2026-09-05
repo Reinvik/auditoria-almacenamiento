@@ -49,37 +49,37 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
 
   return (
-    <header className="bg-[#0a5c36] text-white shadow-lg shadow-emerald-950/20 select-none shrink-0 sticky top-0 z-40 border-b border-[#08482a]">
-      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 py-2.5 flex flex-col md:flex-row items-center justify-between gap-3">
+    <header className="bg-[#0a5c36] text-white shadow-lg shadow-emerald-950/20 select-none shrink-0 sticky top-0 z-40 border-b border-[#08482a] w-full max-w-full">
+      <div className="max-w-[1920px] mx-auto px-3 sm:px-6 py-2 flex flex-wrap lg:flex-nowrap items-center justify-between gap-2.5">
         {/* CIAL Brand Header (Identical to Pallets Outbound & Dock Inbound) */}
-        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-start shrink-0">
+          <div className="flex items-center gap-2.5">
             <img 
               src={cialLogo} 
               alt="CiAL Alimentos" 
-              className="w-12 h-12 object-contain bg-white rounded-xl p-1 shadow-md shrink-0 ring-1 ring-white/30" 
+              className="w-10 h-10 sm:w-11 sm:h-11 object-contain bg-white rounded-xl p-1 shadow-md shrink-0 ring-1 ring-white/30" 
             />
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-black tracking-wider leading-none text-white drop-shadow-sm">
+                <h1 className="text-base sm:text-lg font-black tracking-wider leading-none text-white drop-shadow-sm">
                   AUDITORÍA ALMACENAMIENTO
                 </h1>
-                <span className="hidden sm:inline-block px-1.5 py-0.2 rounded text-[10px] font-black bg-emerald-800 text-emerald-200 border border-emerald-400/30">
+                <span className="hidden md:inline-block px-1.5 py-0.2 rounded text-[10px] font-black bg-emerald-800 text-emerald-200 border border-emerald-400/30">
                   SAN JORGE
                 </span>
               </div>
-              <span className="text-[10.5px] text-emerald-200 font-bold tracking-widest uppercase mt-0.5 block">
+              <span className="text-[10px] sm:text-[10.5px] text-emerald-200 font-bold tracking-widest uppercase mt-0.5 block">
                 Control de Altura y Pasillos — CD San Jorge
               </span>
             </div>
           </div>
 
           {/* Quick mobile buttons */}
-          <div className="flex md:hidden items-center gap-1.5">
+          <div className="flex sm:hidden items-center gap-1.5">
             {onOpenOccupancy && (
               <button
                 onClick={onOpenOccupancy}
-                className="p-2 rounded-lg bg-[#08482a] border border-emerald-700 text-emerald-100 hover:text-white"
+                className="p-1.5 rounded-lg bg-[#08482a] border border-emerald-700 text-emerald-100 hover:text-white"
                 title="Ocupación Frío"
               >
                 <TrendingUp className="w-4 h-4 text-emerald-300" />
@@ -87,14 +87,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
             <button
               onClick={onOpenWorkload}
-              className="p-2 rounded-lg bg-[#08482a] border border-emerald-700 text-emerald-100 hover:text-white"
+              className="p-1.5 rounded-lg bg-[#08482a] border border-emerald-700 text-emerald-100 hover:text-white"
               title="Repartir Trabajo"
             >
               <Scale className="w-4 h-4 text-emerald-300" />
             </button>
             <button
               onClick={onToggleAuditMode}
-              className={`p-2 rounded-lg text-xs font-bold flex items-center gap-1 border transition-all ${
+              className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 border transition-all ${
                 auditMode 
                   ? 'bg-amber-400 border-amber-300 text-slate-950 shadow-md' 
                   : 'bg-[#08482a] border-emerald-700 text-emerald-100'
@@ -105,7 +105,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
             <button
               onClick={onOpenImport}
-              className="p-2 rounded-lg bg-emerald-500 text-slate-950 font-black shadow-md"
+              className="p-1.5 rounded-lg bg-emerald-500 text-slate-950 font-black shadow-md"
             >
               <Upload className="w-4 h-4" />
             </button>
@@ -113,7 +113,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Global Warehouse Stats Summary */}
-        <div className="hidden lg:flex items-center gap-3 bg-[#08482a]/90 px-3.5 py-1.5 rounded-xl border border-white/10 text-xs shadow-inner">
+        <div className="hidden 2xl:flex items-center gap-2.5 bg-[#08482a]/90 px-3 py-1.5 rounded-xl border border-white/10 text-xs shadow-inner shrink-0">
           <div className="flex items-center gap-1.5">
             <Boxes className="w-3.5 h-3.5 text-emerald-300" />
             <span className="text-emerald-200 font-medium">Capacidad:</span>
@@ -146,21 +146,21 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Actions & Search */}
-        <div className="flex items-center gap-2 w-full md:w-auto">
+        <div className="hidden sm:flex items-center gap-2 flex-1 justify-end">
           {/* Search Box */}
-          <div className="relative flex-1 md:w-56">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-300" />
+          <div className="relative w-36 lg:w-48 xl:w-56 shrink-0">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-300" />
             <input
               type="text"
-              placeholder="Buscar Material / Lote / Ubic..."
+              placeholder="Buscar Material..."
               value={searchQuery}
               onChange={e => onSearchChange(e.target.value)}
-              className="w-full bg-[#08482a] border border-emerald-600/60 rounded-xl pl-9 pr-7 py-1.5 text-xs text-white placeholder-emerald-300/60 focus:outline-none focus:border-emerald-300 focus:bg-[#073d23] transition-all shadow-inner"
+              className="w-full bg-[#08482a] border border-emerald-600/60 rounded-xl pl-8 pr-7 py-1.5 text-xs text-white placeholder-emerald-300/60 focus:outline-none focus:border-emerald-300 focus:bg-[#073d23] transition-all shadow-inner"
             />
             {searchQuery && (
               <button 
                 onClick={() => onSearchChange('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-300 hover:text-white"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-300 hover:text-white"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -168,40 +168,40 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Desktop action buttons */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
             {/* Ocupación Frío */}
             {onOpenOccupancy && (
               <button
                 onClick={onOpenOccupancy}
-                className="px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 bg-[#08482a] border border-emerald-600/60 text-emerald-100 hover:bg-[#063921] hover:text-white transition-all shadow-sm cursor-pointer"
+                className="px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 bg-[#08482a] border border-emerald-600/60 text-emerald-100 hover:bg-[#063921] hover:text-white transition-all shadow-sm cursor-pointer"
                 title="Ver Reporte y Gráfico de Ocupación por Tipo de Frío (Congelados vs Refrigerados)"
               >
                 <TrendingUp className="w-3.5 h-3.5 text-emerald-300" />
-                <span>Ocupación Frío</span>
+                <span>Ocupación</span>
               </button>
             )}
 
             {/* Repartir Trabajo */}
             <button
               onClick={onOpenWorkload}
-              className="px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 bg-[#08482a] border border-emerald-600/60 text-emerald-100 hover:bg-[#063921] hover:text-white transition-all shadow-sm cursor-pointer"
+              className="px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 bg-[#08482a] border border-emerald-600/60 text-emerald-100 hover:bg-[#063921] hover:text-white transition-all shadow-sm cursor-pointer"
               title="Distribuir equitativamente el trabajo de auditoría entre auditores"
             >
               <Scale className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Repartir Trabajo</span>
+              <span>Repartir</span>
             </button>
 
             {/* Toggle Audit Mode */}
             <button
               onClick={onToggleAuditMode}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all shadow-sm cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all shadow-sm cursor-pointer ${
                 auditMode
-                  ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/30 scale-105 ring-2 ring-amber-200'
+                  ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/30 ring-2 ring-amber-200'
                   : 'bg-[#08482a] border border-emerald-600/60 text-emerald-100 hover:bg-[#063921] hover:text-white'
               }`}
             >
               <ClipboardCheck className="w-3.5 h-3.5" />
-              <span>Modo Auditoría</span>
+              <span>Auditoría</span>
               {auditCount > 0 && (
                 <span className="ml-1 px-1.5 py-0.2 bg-slate-950 text-amber-300 rounded-full text-[10px] font-black">
                   {auditCount}
@@ -212,7 +212,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Open Report */}
             <button
               onClick={onOpenReport}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-white hover:bg-emerald-50 text-[#0a5c36] shadow-sm transition-all cursor-pointer"
+              className="px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-white hover:bg-emerald-50 text-[#0a5c36] shadow-sm transition-all cursor-pointer"
             >
               <FileText className="w-3.5 h-3.5 text-[#0a5c36]" />
               <span>Informe</span>
@@ -221,10 +221,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Import SAP / Excel */}
             <button
               onClick={onOpenImport}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 shadow-md shadow-emerald-950/40 transition-all cursor-pointer"
+              className="px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 shadow-md shadow-emerald-950/40 transition-all cursor-pointer"
             >
               <Upload className="w-3.5 h-3.5" />
-              <span>Cargar Data SAP</span>
+              <span className="hidden lg:inline">Cargar</span> SAP
             </button>
           </div>
 

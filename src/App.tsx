@@ -371,7 +371,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9] text-slate-800 flex flex-col font-sans antialiased pb-20 sm:pb-0">
+    <div className="min-h-screen bg-[#f1f5f9] text-slate-800 flex flex-col font-sans antialiased pb-20 sm:pb-0 w-full max-w-full overflow-x-hidden">
       {/* CIAL Brand Header */}
       <Navbar
         totalSlots={globalWarehouseStats.totalSlots}
