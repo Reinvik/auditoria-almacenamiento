@@ -392,7 +392,7 @@ export const RackTabs: React.FC<RackTabsProps> = ({
             </span>
             <span className="text-slate-400 hidden sm:inline">•</span>
             <span className="text-slate-600 font-semibold hidden sm:inline">
-              {activeAssignment.totalSlots.toLocaleString()} posiciones asignadas ({activeAssignment.percentage}%)
+              {activeAssignment.effortPoints.toLocaleString()} pts ({activeAssignment.rackIds.length} racks • {activeAssignment.percentage}%)
             </span>
           </div>
           <button

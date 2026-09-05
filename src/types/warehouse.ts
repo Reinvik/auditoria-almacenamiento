@@ -136,7 +136,9 @@ export interface AuditorAssignment {
   color: string;        // Color distintivo para la interfaz
   aisleIds: number[];   // Lista de IDs de pasillos asignados (ej: [5, 6, 7])
   rackIds: number[];    // Lista de IDs de racks asignados (ej: [9, 10, 11, 12, 13, 14])
-  effortPoints: number; // Puntaje de esfuerzo: 1pt simple + 2pt doble (vacías 0pt)
+  effortPoints: number; // Puntaje total de esfuerzo: palletPoints + travelPoints
+  palletPoints: number; // Puntos por carga: 1pt simple + 2pt doble (vacías 0pt)
+  travelPoints: number; // Puntos por recorrido: 100 pts por cada rack recorrido
   singlePalletSlots: number; // Posiciones simples (1 pallet = 1 punto)
   doublePalletSlots: number; // Posiciones dobles (2 pallets = 2 puntos)
   emptySlots: number;   // Posiciones vacías (0 puntos, fáciles de revisar)
@@ -155,5 +157,6 @@ export interface WorkloadDistributionConfig {
   updatedAt: string;
   version: number;
 }
+
 
 

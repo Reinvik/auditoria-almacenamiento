@@ -37,7 +37,7 @@ const LOCAL_STORAGE_STOCK_KEY = 'auditoria_almacenamiento_stock_v1';
 const LOCAL_STORAGE_AUDIT_KEY = 'auditoria_almacenamiento_audit_v1';
 const LOCAL_STORAGE_ZONE_KEY = 'auditoria_almacenamiento_zone_v1';
 const LOCAL_STORAGE_AUDITOR_ID_KEY = 'auditoria_almacenamiento_my_auditor_id';
-const LOCAL_STORAGE_WORKLOAD_KEY = 'auditoria_almacenamiento_workload_v2';
+const LOCAL_STORAGE_WORKLOAD_KEY = 'auditoria_almacenamiento_workload_v3';
 
 
 export default function App() {
@@ -266,13 +266,31 @@ export default function App() {
   const auditorProgressStats = useMemo(() => {
     if (!currentAuditorAssignment) return null;
     let auditedCount = 0;
-    let verifiedPoints = 0;
+    let verifiedPalletPoints = 0;
     for (const finding of auditFindings.values()) {
       if (currentAuditorAssignment.rackIds.includes(finding.rackId)) {
         auditedCount++;
-        verifiedPoints += (finding.systemPallets === 0 ? 0 : (finding.systemPallets === 1 ? 1 : 2));
+        verifiedPalletPoints += (finding.systemPallets === 0 ? 0 : (finding.systemPallets === 1 ? 1 : 2));
       }
     }
+
+    // Puntos de recorrido ganados proporcionalmente según el avance en cada rack asignado
+    let verifiedTravelPoints = 0;
+    for (const rId of currentAuditorAssignment.rackIds) {
+      const r = WAREHOUSE_RACKS.find(x => x.id === rId);
+      if (!r) continue;
+      const totalRackSlots = r.moduleCount * 6;
+      let auditedInRack = 0;
+      for (const finding of auditFindings.values()) {
+        if (finding.rackId === rId) auditedInRack++;
+      }
+      if (totalRackSlots > 0 && auditedInRack > 0) {
+        const ratio = Math.min(1, auditedInRack / totalRackSlots);
+        verifiedTravelPoints += Math.round(ratio * 100);
+      }
+    }
+
+    const verifiedPoints = verifiedPalletPoints + verifiedTravelPoints;
     const totalPts = currentAuditorAssignment.effortPoints || 1;
     const percent = totalPts > 0 ? Math.round((verifiedPoints / totalPts) * 1000) / 10 : 0;
     return {

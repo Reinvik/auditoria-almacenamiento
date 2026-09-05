@@ -112,7 +112,7 @@ export const WorkloadModal: React.FC<WorkloadModalProps> = ({
                 REPARTO JUSTO DE AUDITORÍA
               </h2>
               <p className="text-xs text-emerald-200/90 font-medium">
-                Puntaje de esfuerzo: 1 pt simple • 2 pts doble • 0 pts vacías
+                Puntaje de esfuerzo: 1 pt simple • 2 pts doble • +100 pts por rack recorrido • 0 pts vacías
               </p>
             </div>
           </div>
@@ -331,11 +331,11 @@ export const WorkloadModal: React.FC<WorkloadModalProps> = ({
                     )}
                   </div>
                   <p className="text-[11px] text-slate-600 font-bold leading-tight">
-                    Simple (1) = 1 pt • Doble (2) = 2 pts
+                    Simple = 1 pt • Doble = 2 pts • +100 pts x rack
                   </p>
                 </div>
                 <span className="text-[10px] text-slate-400 mt-2 block">
-                  Vacías = 0 pts (fáciles de revisar)
+                  Vacías = 0 pts • Recorrido compensado
                 </span>
               </button>
 
@@ -476,18 +476,30 @@ export const WorkloadModal: React.FC<WorkloadModalProps> = ({
                     </div>
 
                     {/* Puntaje de Esfuerzo y Desglose */}
-                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200/80 flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-black text-[#0a5c36] text-sm">
-                          🎯 {assignment.effortPoints.toLocaleString()} pts
-                        </span>
-                        <span className="text-slate-400 font-bold">•</span>
-                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-[#08482a] font-black text-[11px]">
-                          {assignment.percentage}% del total
-                        </span>
+                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200/80 space-y-1.5 text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-black text-[#0a5c36] text-sm">
+                            🎯 {assignment.effortPoints.toLocaleString()} pts
+                          </span>
+                          <span className="text-slate-400 font-bold">•</span>
+                          <span className="px-2 py-0.5 rounded bg-emerald-100 text-[#08482a] font-black text-[11px]">
+                            {assignment.percentage}% del total
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-[11px] text-slate-700 font-bold">
+                          <span>
+                            📦 <strong>{(assignment.palletPoints ?? (assignment.effortPoints - assignment.rackIds.length * 100)).toLocaleString()} pts</strong> pallets
+                          </span>
+                          <span>+</span>
+                          <span>
+                            🚶‍♂️ <strong>{(assignment.travelPoints ?? (assignment.rackIds.length * 100)).toLocaleString()} pts</strong> recorrido ({assignment.rackIds.length} racks)
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-2 text-[11px] text-slate-600 font-semibold">
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600 font-semibold border-t border-slate-200/60 pt-1">
                         <span>
                           🟢 <strong className="text-slate-900 font-black">{assignment.singlePalletSlots}</strong> simples (1pt)
                         </span>
@@ -496,8 +508,12 @@ export const WorkloadModal: React.FC<WorkloadModalProps> = ({
                           🟣 <strong className="text-slate-900 font-black">{assignment.doublePalletSlots}</strong> dobles (2pt)
                         </span>
                         <span>•</span>
+                        <span>
+                          🚶‍♂️ <strong className="text-slate-900 font-black">{assignment.rackIds.length}</strong> racks (+100 pts c/u)
+                        </span>
+                        <span>•</span>
                         <span className="text-slate-400">
-                          ⬛ {assignment.emptySlots} vacías
+                          ⬛ {assignment.emptySlots} vacías (0pt)
                         </span>
                       </div>
                     </div>

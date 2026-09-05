@@ -21,11 +21,16 @@ export const AUDITOR_COLORS = [
   '#65a30d', // 8: Verde Lima
 ];
 
+// Puntos de esfuerzo añadidos por cada rack recorrido físicamente (100 puntos por rack)
+export const TRAVEL_POINTS_PER_RACK = 100;
+
 export interface AisleWorkload {
   aisle: AislePair;
   rackIds: number[];
   rackCodes: string[];
-  effortPoints: number; // 1pt simple, 2pt doble (vacías 0pt)
+  effortPoints: number; // total = palletPoints + travelPoints
+  palletPoints: number; // 1pt simple, 2pt doble (vacías 0pt)
+  travelPoints: number; // 100 pts por cada rack en el pasillo
   singlePalletSlots: number;
   doublePalletSlots: number;
   emptySlots: number;
@@ -37,7 +42,9 @@ export interface AisleWorkload {
 export interface RackWorkload {
   rack: RackConfig;
   aisleId: number;
-  effortPoints: number;
+  effortPoints: number; // total = palletPoints + travelPoints
+  palletPoints: number; // 1pt simple, 2pt doble (vacías 0pt)
+  travelPoints: number; // 100 pts por este rack
   singlePalletSlots: number;
   doublePalletSlots: number;
   emptySlots: number;
@@ -101,13 +108,15 @@ export function isAisleInZone(aisleId: number, zone: WarehouseZone): boolean {
  * - Posiciones vacías: 0 puntos (revisión inmediata sin conteo).
  * - Posición simple (1 pallet): 1 punto de esfuerzo.
  * - Posición doble (2 pallets): 2 puntos de esfuerzo.
- * - Posición triple o más: N puntos.
+ * - Recorrido físico del rack: +100 puntos de esfuerzo (evita que un auditor termine con 7 racks y otro con 2).
  */
 export function calculateSingleRackWorkload(
   rack: RackConfig,
   stockIndex: Map<string, StockItem[]>
 ): {
   effortPoints: number;
+  palletPoints: number;
+  travelPoints: number;
   singlePalletSlots: number;
   doublePalletSlots: number;
   emptySlots: number;
@@ -120,7 +129,7 @@ export function calculateSingleRackWorkload(
   let totalPallets = 0;
   let singlePalletSlots = 0;
   let doublePalletSlots = 0;
-  let effortPoints = 0;
+  let palletPoints = 0;
 
   for (const mod of rack.modules) {
     for (let lvl = 1; lvl <= 6; lvl++) {
@@ -133,21 +142,25 @@ export function calculateSingleRackWorkload(
         totalPallets += count;
         if (count === 1) {
           singlePalletSlots++;
-          effortPoints += 1;
+          palletPoints += 1;
         } else if (count === 2) {
           doublePalletSlots++;
-          effortPoints += 2;
+          palletPoints += 2;
         } else {
-          effortPoints += count;
+          palletPoints += count;
         }
       }
     }
   }
 
   const emptySlots = Math.max(0, totalSlots - occupiedSlots);
+  const travelPoints = TRAVEL_POINTS_PER_RACK; // 100 pts de esfuerzo por recorrer físicamente el rack
+  const effortPoints = palletPoints + travelPoints;
 
   return {
     effortPoints,
+    palletPoints,
+    travelPoints,
     singlePalletSlots,
     doublePalletSlots,
     emptySlots,
@@ -177,6 +190,8 @@ export function calculateAislesWorkload(
     let singlePalletSlots = 0;
     let doublePalletSlots = 0;
     let emptySlots = 0;
+    let palletPoints = 0;
+    let travelPoints = 0;
     let effortPoints = 0;
     const rackCodes: string[] = [];
 
@@ -192,6 +207,8 @@ export function calculateAislesWorkload(
       singlePalletSlots += rMetrics.singlePalletSlots;
       doublePalletSlots += rMetrics.doublePalletSlots;
       emptySlots += rMetrics.emptySlots;
+      palletPoints += rMetrics.palletPoints;
+      travelPoints += rMetrics.travelPoints;
       effortPoints += rMetrics.effortPoints;
     }
 
@@ -200,6 +217,8 @@ export function calculateAislesWorkload(
       rackIds,
       rackCodes,
       effortPoints,
+      palletPoints,
+      travelPoints,
       singlePalletSlots,
       doublePalletSlots,
       emptySlots,
@@ -271,7 +290,9 @@ export function calculateOptimalWorkloadDistribution(
     const totalSlots = aisleWorkloads.reduce((acc, aw) => acc + aw.totalSlots, 0);
     const occupiedSlots = aisleWorkloads.reduce((acc, aw) => acc + aw.occupiedSlots, 0);
     const totalPallets = aisleWorkloads.reduce((acc, aw) => acc + aw.totalPallets, 0);
-    const effortPoints = aisleWorkloads.reduce((acc, aw) => acc + aw.effortPoints, 0);
+    const palletPoints = aisleWorkloads.reduce((acc, aw) => acc + aw.palletPoints, 0);
+    const travelPoints = aisleWorkloads.reduce((acc, aw) => acc + aw.travelPoints, 0);
+    const effortPoints = palletPoints + travelPoints;
     const singlePalletSlots = aisleWorkloads.reduce((acc, aw) => acc + aw.singlePalletSlots, 0);
     const doublePalletSlots = aisleWorkloads.reduce((acc, aw) => acc + aw.doublePalletSlots, 0);
     const emptySlots = aisleWorkloads.reduce((acc, aw) => acc + aw.emptySlots, 0);
@@ -283,6 +304,8 @@ export function calculateOptimalWorkloadDistribution(
       aisleIds: allAisleIds,
       rackIds: allRackIds,
       effortPoints,
+      palletPoints,
+      travelPoints,
       singlePalletSlots,
       doublePalletSlots,
       emptySlots,
@@ -299,7 +322,7 @@ export function calculateOptimalWorkloadDistribution(
       partitionMode: 'by_aisles',
       assignments: [assignment],
       updatedAt: new Date().toISOString(),
-      version: 2,
+      version: 3,
     };
   }
 
@@ -350,7 +373,9 @@ export function calculateOptimalWorkloadDistribution(
     const totalSlots = chunkAisles.reduce((acc, aw) => acc + aw.totalSlots, 0);
     const occupiedSlots = chunkAisles.reduce((acc, aw) => acc + aw.occupiedSlots, 0);
     const totalPallets = chunkAisles.reduce((acc, aw) => acc + aw.totalPallets, 0);
-    const effortPoints = chunkAisles.reduce((acc, aw) => acc + aw.effortPoints, 0);
+    const palletPoints = chunkAisles.reduce((acc, aw) => acc + aw.palletPoints, 0);
+    const travelPoints = chunkAisles.reduce((acc, aw) => acc + aw.travelPoints, 0);
+    const effortPoints = palletPoints + travelPoints;
     const singlePalletSlots = chunkAisles.reduce((acc, aw) => acc + aw.singlePalletSlots, 0);
     const doublePalletSlots = chunkAisles.reduce((acc, aw) => acc + aw.doublePalletSlots, 0);
     const emptySlots = chunkAisles.reduce((acc, aw) => acc + aw.emptySlots, 0);
@@ -368,6 +393,8 @@ export function calculateOptimalWorkloadDistribution(
       aisleIds,
       rackIds,
       effortPoints,
+      palletPoints,
+      travelPoints,
       singlePalletSlots,
       doublePalletSlots,
       emptySlots,
@@ -387,7 +414,7 @@ export function calculateOptimalWorkloadDistribution(
     partitionMode: 'by_aisles',
     assignments,
     updatedAt: new Date().toISOString(),
-    version: 2,
+    version: 3,
   };
 }
 
@@ -459,7 +486,9 @@ function calculateOptimalRacksDistribution(
     const totalSlots = chunkRacks.reduce((acc, rw) => acc + rw.totalSlots, 0);
     const occupiedSlots = chunkRacks.reduce((acc, rw) => acc + rw.occupiedSlots, 0);
     const totalPallets = chunkRacks.reduce((acc, rw) => acc + rw.totalPallets, 0);
-    const effortPoints = chunkRacks.reduce((acc, rw) => acc + rw.effortPoints, 0);
+    const palletPoints = chunkRacks.reduce((acc, rw) => acc + rw.palletPoints, 0);
+    const travelPoints = chunkRacks.reduce((acc, rw) => acc + rw.travelPoints, 0);
+    const effortPoints = palletPoints + travelPoints;
     const singlePalletSlots = chunkRacks.reduce((acc, rw) => acc + rw.singlePalletSlots, 0);
     const doublePalletSlots = chunkRacks.reduce((acc, rw) => acc + rw.doublePalletSlots, 0);
     const emptySlots = chunkRacks.reduce((acc, rw) => acc + rw.emptySlots, 0);
@@ -477,6 +506,8 @@ function calculateOptimalRacksDistribution(
       aisleIds,
       rackIds,
       effortPoints,
+      palletPoints,
+      travelPoints,
       singlePalletSlots,
       doublePalletSlots,
       emptySlots,
@@ -496,7 +527,7 @@ function calculateOptimalRacksDistribution(
     partitionMode: 'by_racks',
     assignments,
     updatedAt: new Date().toISOString(),
-    version: 2,
+    version: 3,
   };
 }
 
@@ -511,7 +542,7 @@ export function generateWorkloadShareText(config: WorkloadDistributionConfig): s
       : 'ALMACÉN COMPLETO (Racks 1 al 29 • Pasillos 1 al 15)';
 
   const metricLabel = config.balanceMetric === 'effortPoints' 
-    ? 'Puntaje de Auditoría (1 pt Simple, 2 pts Doble, 0 pts Vacías)' 
+    ? 'Puntaje de Esfuerzo (1 pt Simple, 2 pts Doble, +100 pts por Rack Recorrido)' 
     : config.balanceMetric === 'occupiedSlots' 
       ? 'Posiciones Ocupadas' 
       : config.balanceMetric === 'totalSlots'
@@ -534,11 +565,15 @@ export function generateWorkloadShareText(config: WorkloadDistributionConfig): s
       ? `RACK ${a.rackIds[0]}` 
       : `RACK ${a.rackIds[0]} al ${a.rackIds[a.rackIds.length - 1]} (${a.rackIds.map(r => `R${r}`).join(', ')})`;
 
+    const pPts = a.palletPoints ?? (a.effortPoints - a.rackIds.length * 100);
+    const tPts = a.travelPoints ?? (a.rackIds.length * 100);
+
     text += `👤 *${a.name}* (ID #${a.id}):\n`;
     text += `  • 🚪 *${aislesStr}*\n`;
-    text += `  • 🏗️ ${racksStr}\n`;
-    text += `  • 🎯 *Puntaje de Auditoría*: *${a.effortPoints.toLocaleString()} pts* (${a.percentage}%)\n`;
-    text += `  • 📦 *Detalle Carga*: ${a.singlePalletSlots.toLocaleString()} simples (1pt) | ${a.doublePalletSlots.toLocaleString()} dobles (2pt)\n`;
+    text += `  • 🏗️ ${racksStr} (${a.rackIds.length} racks)\n`;
+    text += `  • 🎯 *Puntaje Total*: *${a.effortPoints.toLocaleString()} pts* (${a.percentage}%)\n`;
+    text += `  • 📦 *Puntos Pallets*: ${pPts.toLocaleString()} pts (${a.singlePalletSlots.toLocaleString()} simples • ${a.doublePalletSlots.toLocaleString()} dobles)\n`;
+    text += `  • 🚶‍♂️ *Puntos Recorrido*: ${tPts.toLocaleString()} pts (${a.rackIds.length} racks × 100 pts)\n`;
     text += `  • ⬜ *Vacías*: ${a.emptySlots.toLocaleString()} huecos (0pt) | Total: ${a.totalSlots.toLocaleString()} pos\n\n`;
   });
 
