@@ -113,7 +113,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Global Warehouse Stats Summary */}
-        <div className="hidden xl:flex items-center gap-2 bg-[#08482a]/90 px-3 py-1.5 rounded-xl border border-white/10 text-xs shadow-inner shrink-0">
+        <div 
+          onClick={onOpenOccupancy}
+          className="hidden xl:flex items-center gap-2 bg-[#08482a]/90 hover:bg-[#073d23] cursor-pointer px-3 py-1.5 rounded-xl border border-white/10 text-xs shadow-inner shrink-0 transition-colors"
+          title="Ver Reporte y Gráfico de Ocupación Frío"
+        >
           <div className="flex items-center gap-1.5">
             <Boxes className="w-3.5 h-3.5 text-emerald-300" />
             <span className="text-emerald-200 font-medium">Capacidad:</span>
@@ -132,17 +136,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               {occupancyRate}%
             </span>
           </div>
-          <div className="w-px h-3 bg-emerald-700/60" />
-          <div className="flex items-center gap-1.5">
-            <span className="text-emerald-200 font-medium">Pallets:</span>
-            <span className="font-extrabold text-white">{totalPallets.toLocaleString()}</span>
-          </div>
         </div>
 
         {/* Actions & Search */}
-        <div className="hidden sm:flex items-center gap-2.5 flex-1 justify-end">
+        <div className="hidden sm:flex items-center gap-2 flex-1 justify-end">
           {/* Search Box */}
-          <div className="relative w-40 lg:w-48 xl:w-56 shrink-0">
+          <div className="relative w-36 lg:w-44 xl:w-52 shrink-0">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-300" />
             <input
               type="text"
@@ -163,6 +162,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Desktop action buttons */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* Reporte de Ocupación Frío */}
+            {onOpenOccupancy && (
+              <button
+                onClick={onOpenOccupancy}
+                className="px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 bg-[#0e4c68] hover:bg-[#08364b] text-white border border-sky-400/50 shadow-sm transition-all cursor-pointer ring-1 ring-sky-300/30"
+                title="Ver Reporte y Gráfico de Ocupación por Tipo de Frío (Congelados vs Refrigerados)"
+              >
+                <TrendingUp className="w-3.5 h-3.5 text-sky-300" />
+                <span>Reporte Ocupación</span>
+              </button>
+            )}
+
             {/* Toggle Audit Mode */}
             <button
               onClick={onToggleAuditMode}

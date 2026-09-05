@@ -462,7 +462,10 @@ export default function App() {
       {/* Main Rack View Area */}
       <main className="flex-1 p-3 sm:p-6 max-w-[1920px] mx-auto w-full">
         {viewMode === 'occupancy_report' ? (
-          <OccupancyReportView stockIndex={stockIndex} />
+          <OccupancyReportView 
+            stockIndex={stockIndex} 
+            onBackToRacks={() => setViewMode('audit_excel')}
+          />
         ) : viewMode === 'double_aisle' ? (
           <AisleDoubleView
             aisles={visibleAisles}
