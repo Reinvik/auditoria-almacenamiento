@@ -10,6 +10,7 @@ import { WAREHOUSE_RACKS, DEFAULT_AISLES } from './config/warehouseConfig';
 import { INITIAL_STOCK_DATA } from './data/initialStockData';
 import { buildStockIndex, generateRackSlots, calculateRackStats } from './utils/warehouseMapper';
 import { calculateOptimalWorkloadDistribution } from './utils/workloadDistributor';
+import { searchWarehouse } from './utils/warehouseSearch';
 import { Navbar } from './components/Navbar';
 import { RackTabs, ViewMode, FilterType } from './components/RackTabs';
 import { RackGridView } from './components/RackGridView';
@@ -347,6 +348,28 @@ export default function App() {
     setStockData(INITIAL_STOCK_DATA);
   };
 
+  // Cálculo de resultados de búsqueda global en todo el inventario
+  const searchResult = useMemo(() => {
+    return searchWarehouse(stockData, searchQuery);
+  }, [stockData, searchQuery]);
+
+  // Selección directa de slot por búsqueda
+  const handleSelectSlotByUbicacion = (ubicacion: string, rackId: number) => {
+    setSelectedRackId(rackId);
+    const targetRack = WAREHOUSE_RACKS.find(r => r.id === rackId);
+    if (targetRack) {
+      const slots = generateRackSlots(targetRack, stockIndex);
+      for (const row of slots) {
+        for (const s of row) {
+          if (s.ubicacion === ubicacion) {
+            setSelectedSlot(s);
+            return;
+          }
+        }
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f1f5f9] text-slate-800 flex flex-col font-sans antialiased pb-20 sm:pb-0 w-full max-w-full overflow-x-hidden">
       {/* CIAL Brand Header */}
@@ -358,6 +381,9 @@ export default function App() {
         totalPallets={globalWarehouseStats.totalPallets}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        searchResult={searchResult}
+        onSelectRack={setSelectedRackId}
+        onSelectSlotByUbicacion={handleSelectSlotByUbicacion}
         auditMode={auditMode}
         onToggleAuditMode={() => setAuditMode(prev => !prev)}
         auditCount={auditFindings.size}
@@ -371,7 +397,7 @@ export default function App() {
 
       {/* Rack Selector & View Mode Switcher */}
       <RackTabs
-        racks={WAREHOUSE_RACKS}
+        racks={visibleRacks}
         selectedRackId={selectedRackId}
         onSelectRack={setSelectedRackId}
         viewMode={viewMode}
@@ -388,6 +414,9 @@ export default function App() {
         activeAuditorId={activeAuditorId}
         onSelectAuditor={setActiveAuditorId}
         onOpenWorkloadModal={() => setIsWorkloadOpen(true)}
+        searchQuery={searchQuery}
+        searchRackCounts={searchResult.rackCounts}
+        matchedRackIds={searchResult.matchedRackIds}
       />
 
       {/* Personal Auditor Progress Banner */}

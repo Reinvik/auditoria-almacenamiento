@@ -48,6 +48,9 @@ interface RackTabsProps {
   activeAuditorId: number | null;
   onSelectAuditor: (id: number | null) => void;
   onOpenWorkloadModal: () => void;
+  searchQuery?: string;
+  searchRackCounts?: Map<number, number>;
+  matchedRackIds?: number[];
 }
 
 
@@ -69,6 +72,9 @@ export const RackTabs: React.FC<RackTabsProps> = ({
   activeAuditorId,
   onSelectAuditor,
   onOpenWorkloadModal,
+  searchQuery,
+  searchRackCounts,
+  matchedRackIds,
 }) => {
   const tabsContainerRef = useRef<HTMLDivElement>(null);
 
@@ -308,11 +314,15 @@ export const RackTabs: React.FC<RackTabsProps> = ({
                   onChange={e => onSelectRack(Number(e.target.value))}
                   className="bg-slate-50 border border-slate-300 text-slate-900 text-xs font-black rounded-xl px-3 py-1.5 focus:outline-none focus:border-[#0a5c36] shadow-sm cursor-pointer"
                 >
-                  {visibleRacks.map(r => (
-                    <option key={r.id} value={r.id}>
-                      {r.name} ({r.moduleCount} mód / {r.moduleCount * 6} pos)
-                    </option>
-                  ))}
+                  {visibleRacks.map(r => {
+                    const matchCount = searchRackCounts?.get(r.id) || 0;
+                    const matchLabel = matchCount > 0 ? `🎯 [${matchCount} coinc.] ` : '';
+                    return (
+                      <option key={r.id} value={r.id}>
+                        {matchLabel}{r.name} ({r.moduleCount} mód / {r.moduleCount * 6} pos)
+                      </option>
+                    );
+                  })}
                 </select>
 
                 <button
@@ -462,6 +472,61 @@ export const RackTabs: React.FC<RackTabsProps> = ({
               </div>
             )}
 
+            {/* Banner de Búsqueda Activa (si hay búsqueda) */}
+            {searchQuery && searchQuery.trim() !== '' && (
+              <div className="bg-amber-50 border border-amber-300 px-3 py-2 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs shadow-xs animate-in fade-in">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-950">
+                    <span className="px-2 py-0.5 rounded-md bg-amber-400 text-slate-950 font-black text-[11px]">
+                      Búsqueda: "{searchQuery}"
+                    </span>
+                    {searchRackCounts && searchRackCounts.size > 0 ? (
+                      <span className="text-amber-900 font-extrabold">
+                        Encontrado en {searchRackCounts.size} rack(s):
+                      </span>
+                    ) : (
+                      <span className="text-rose-700 font-bold">
+                        Sin coincidencias en ningún rack.
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Pills de Racks que contienen el material */}
+                  {searchRackCounts && searchRackCounts.size > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {Array.from(searchRackCounts.entries()).map(([rId, count]) => {
+                        const isCurrent = rId === selectedRackId;
+                        return (
+                          <button
+                            key={rId}
+                            onClick={() => onSelectRack(rId)}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                              isCurrent
+                                ? 'bg-amber-500 text-slate-950 ring-2 ring-amber-600 shadow-xs scale-105'
+                                : 'bg-white hover:bg-amber-200 text-amber-900 border border-amber-300 shadow-2xs'
+                            }`}
+                            title={`Ir a Rack ${rId} (${count} posiciones)`}
+                          >
+                            <span>Rack {rId}</span>
+                            <span className="px-1.5 py-0.2 rounded-full bg-slate-950/15 text-[10px] font-black">
+                              {count}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Aviso si el rack actual no tiene coincidencias */}
+                {searchRackCounts && searchRackCounts.size > 0 && !searchRackCounts.has(selectedRackId) && (
+                  <span className="text-[11px] text-amber-800 font-bold italic">
+                    ⚠️ El Rack {selectedRackId} actual no contiene este material. Haz clic en un rack resaltado para verlo.
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Bottom Row: CIAL Style Rack Tabs (Filtrados por auditor o zona) */}
             <div 
               ref={tabsContainerRef}
@@ -469,18 +534,42 @@ export const RackTabs: React.FC<RackTabsProps> = ({
             >
               {visibleRacks.map(rack => {
                 const isActive = rack.id === selectedRackId;
+                const matchCount = searchRackCounts?.get(rack.id) || 0;
+                const hasSearch = Boolean(searchQuery && searchQuery.trim().length > 0);
+                const hasMatches = matchCount > 0;
+
+                let tabStyle = '';
+                if (hasSearch) {
+                  if (hasMatches) {
+                    // MARCAR EN NEGRITAS Y RESALTADO VIBRANTE
+                    tabStyle = isActive
+                      ? 'bg-[#0a5c36] text-white ring-2 ring-amber-400 font-black shadow-md scale-105 border border-amber-400'
+                      : 'bg-amber-100 text-amber-950 font-black border-2 border-amber-400 hover:bg-amber-200 shadow-xs';
+                  } else {
+                    // Atenuado para que resalten los racks con coincidencias
+                    tabStyle = isActive
+                      ? 'bg-slate-700 text-white font-bold opacity-70'
+                      : 'bg-slate-100 text-slate-400 font-normal opacity-40 hover:opacity-80 border border-slate-200';
+                  }
+                } else {
+                  tabStyle = isActive
+                    ? 'bg-[#0a5c36] text-white shadow-md shadow-emerald-950/20 scale-105 border border-[#08482a]'
+                    : 'bg-slate-100 text-slate-600 hover:bg-[#e6f4ea] hover:text-[#0a5c36] border border-slate-200/80';
+                }
+
                 return (
                   <button
                     key={rack.id}
                     data-active={isActive}
                     onClick={() => onSelectRack(rack.id)}
-                    className={`px-3 py-1 rounded-lg text-xs font-black transition-all whitespace-nowrap cursor-pointer ${
-                      isActive
-                        ? 'bg-[#0a5c36] text-white shadow-md shadow-emerald-950/20 scale-105 border border-[#08482a]'
-                        : 'bg-slate-100 text-slate-600 hover:bg-[#e6f4ea] hover:text-[#0a5c36] border border-slate-200/80'
-                    }`}
+                    className={`px-3 py-1 rounded-lg text-xs font-black transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${tabStyle}`}
                   >
-                    {rack.sheet}
+                    <span>{rack.sheet}</span>
+                    {hasSearch && hasMatches && (
+                      <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black shadow-2xs">
+                        {matchCount}
+                      </span>
+                    )}
                   </button>
                 );
               })}

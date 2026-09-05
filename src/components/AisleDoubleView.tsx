@@ -52,19 +52,31 @@ export const AisleDoubleView: React.FC<AisleDoubleViewProps> = ({
     const searchMatch = isSearchMatch(slot);
     const finding = auditFindings.get(slot.ubicacion);
 
-    let bgClass = slot.isEmpty 
-      ? 'bg-black text-white border-slate-700' 
-      : 'bg-white text-black border-slate-300 hover:border-[#0a5c36]';
-    let ringClass = searchMatch ? 'ring-2 ring-emerald-500 scale-105 shadow-md shadow-emerald-500/40' : '';
+    let bgClass = '';
+    let textClass = '';
+
+    if (searchMatch) {
+      bgClass = 'bg-amber-100 text-amber-950 border-amber-400 font-black shadow-md';
+      textClass = 'text-amber-950 font-black text-[11px] underline decoration-amber-500';
+    } else if (slot.isEmpty) {
+      bgClass = 'bg-black text-white border-slate-700';
+      textClass = 'text-white font-bold text-[10px]';
+    } else {
+      bgClass = 'bg-white text-black border-slate-300 hover:border-[#0a5c36]';
+      textClass = 'text-black font-extrabold text-[10.5px]';
+    }
+
+    const opacityClass = query ? (searchMatch ? '!opacity-100' : 'opacity-25 hover:opacity-80 transition-opacity') : 'opacity-100';
+    const ringClass = searchMatch ? 'ring-4 ring-amber-400 scale-105 z-10 shadow-lg shadow-amber-400/50' : '';
 
     return (
       <div
         key={slot.ubicacion}
         onClick={() => onSlotClick(slot)}
         title={`${slot.ubicacion} • ${slot.displayText}`}
-        className={`relative border h-9 px-1.5 flex flex-col items-center justify-center cursor-pointer transition-all ${bgClass} ${ringClass} hover:opacity-90 shadow-2xs`}
+        className={`relative border h-9 px-1.5 flex flex-col items-center justify-center cursor-pointer transition-all ${bgClass} ${ringClass} ${opacityClass} shadow-2xs`}
       >
-        <span className="text-[10.5px] font-black tracking-tight truncate max-w-full">
+        <span className={`tracking-tight truncate max-w-full ${textClass}`}>
           {slot.displayText}
         </span>
         {finding && (

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Search, 
   Upload, 
@@ -7,9 +7,12 @@ import {
   Boxes,
   X,
   Scale,
-  TrendingUp
+  TrendingUp,
+  MapPin,
+  ExternalLink
 } from 'lucide-react';
 import cialLogo from '../assets/cial-alimentos-logo.png';
+import { WarehouseSearchResult } from '../utils/warehouseSearch';
 
 interface NavbarProps {
   totalSlots: number;
@@ -19,6 +22,9 @@ interface NavbarProps {
   totalPallets: number;
   searchQuery: string;
   onSearchChange: (q: string) => void;
+  searchResult?: WarehouseSearchResult;
+  onSelectRack?: (id: number) => void;
+  onSelectSlotByUbicacion?: (ubicacion: string, rackId: number) => void;
   auditMode: boolean;
   onToggleAuditMode: () => void;
   auditCount: number;
@@ -38,6 +44,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   totalPallets,
   searchQuery,
   onSearchChange,
+  searchResult,
+  onSelectRack,
+  onSelectSlotByUbicacion,
   auditMode,
   onToggleAuditMode,
   auditCount,
@@ -47,6 +56,20 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenOccupancy,
   activeAuditorName,
 }) => {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <header className="bg-[#0a5c36] text-white shadow-lg shadow-emerald-950/20 select-none shrink-0 sticky top-0 z-40 border-b border-[#08482a] w-full max-w-full">
@@ -76,6 +99,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Quick mobile buttons */}
           <div className="flex sm:hidden items-center gap-1.5">
+            <button
+              onClick={() => setShowMobileSearch(prev => !prev)}
+              className={`p-1.5 rounded-lg border transition-all ${
+                showMobileSearch || searchQuery
+                  ? 'bg-amber-400 border-amber-300 text-slate-950 font-bold'
+                  : 'bg-[#08482a] border-emerald-700 text-emerald-100 hover:text-white'
+              }`}
+              title="Buscar Material o Lote"
+            >
+              <Search className="w-4 h-4" />
+            </button>
             {onOpenOccupancy && (
               <button
                 onClick={onOpenOccupancy}
@@ -112,6 +146,35 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
+        {/* Mobile Search Row (Expandible) */}
+        {(showMobileSearch || searchQuery) && (
+          <div className="w-full sm:hidden pt-1 pb-1">
+            <div className="relative w-full">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-300" />
+              <input
+                type="text"
+                placeholder="Buscar Material, Lote..."
+                value={searchQuery}
+                onChange={e => onSearchChange(e.target.value)}
+                className="w-full bg-[#08482a] border border-emerald-600/60 rounded-xl pl-8 pr-16 py-1.5 text-xs text-white placeholder-emerald-300/60 focus:outline-none focus:border-emerald-300 focus:bg-[#073d23] transition-all shadow-inner font-medium"
+              />
+              {searchQuery && searchResult && (
+                <span className="absolute right-7 top-1/2 -translate-y-1/2 text-[10px] font-black text-amber-400">
+                  {searchResult.totalLocations} pos
+                </span>
+              )}
+              {searchQuery && (
+                <button
+                  onClick={() => onSearchChange('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-300 hover:text-white p-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Global Warehouse Stats Summary */}
         <div 
           onClick={onOpenOccupancy}
@@ -141,22 +204,154 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Actions & Search */}
         <div className="hidden sm:flex items-center gap-2 flex-1 justify-end">
           {/* Search Box */}
-          <div className="relative w-36 lg:w-44 xl:w-52 shrink-0">
+          <div ref={searchContainerRef} className="relative w-44 lg:w-56 xl:w-64 shrink-0">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-300" />
             <input
               type="text"
               placeholder="Buscar Material, Lote..."
               value={searchQuery}
-              onChange={e => onSearchChange(e.target.value)}
-              className="w-full bg-[#08482a] border border-emerald-600/60 rounded-xl pl-8 pr-7 py-1.5 text-xs text-white placeholder-emerald-300/60 focus:outline-none focus:border-emerald-300 focus:bg-[#073d23] transition-all shadow-inner"
+              onFocus={() => setIsDropdownOpen(true)}
+              onChange={e => {
+                onSearchChange(e.target.value);
+                setIsDropdownOpen(true);
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && searchResult && searchResult.matchedRackIds.length > 0) {
+                  onSelectRack?.(searchResult.matchedRackIds[0]);
+                  setIsDropdownOpen(false);
+                }
+              }}
+              className="w-full bg-[#08482a] border border-emerald-600/60 rounded-xl pl-8 pr-16 py-1.5 text-xs text-white placeholder-emerald-300/60 focus:outline-none focus:border-emerald-300 focus:bg-[#073d23] transition-all shadow-inner font-medium"
             />
+            {/* Match Counter Badge inside input */}
+            {searchQuery && searchResult && (
+              <span className="absolute right-7 top-1/2 -translate-y-1/2 pointer-events-none">
+                {searchResult.totalLocations > 0 ? (
+                  <span className="px-1.5 py-0.2 rounded-md bg-amber-400 text-slate-950 font-black text-[9.5px] shadow-xs animate-pulse">
+                    {searchResult.totalLocations} pos
+                  </span>
+                ) : (
+                  <span className="text-rose-300 font-bold text-[9.5px]">0 pos</span>
+                )}
+              </span>
+            )}
             {searchQuery && (
               <button 
-                onClick={() => onSearchChange('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-300 hover:text-white"
+                onClick={() => {
+                  onSearchChange('');
+                  setIsDropdownOpen(false);
+                }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-300 hover:text-white cursor-pointer"
+                title="Limpiar búsqueda"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
+            )}
+
+            {/* Dropdown flotante con resultados de búsqueda */}
+            {isDropdownOpen && searchResult && searchQuery.trim() !== '' && (
+              <div className="absolute top-full right-0 mt-2 w-80 sm:w-96 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-300 z-50 overflow-hidden text-xs animate-in fade-in zoom-in-95 duration-150 select-text">
+                {/* Header */}
+                <div className="bg-[#0a5c36] text-white px-4 py-2.5 flex items-center justify-between shadow-xs">
+                  <div>
+                    <span className="font-black text-xs block">
+                      {searchResult.totalLocations} ubicación(es) con "{searchQuery}"
+                    </span>
+                    <span className="text-[10.5px] text-emerald-100 font-medium">
+                      Encontrado en {searchResult.matchedRackIds.length} rack(s)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsDropdownOpen(false)}
+                    className="text-emerald-200 hover:text-white p-1 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Quick Jump Buttons by Rack */}
+                {searchResult.matchedRackIds.length > 0 && (
+                  <div className="bg-amber-50 px-3 py-2 border-b border-amber-200 flex items-center gap-1.5 flex-wrap">
+                    <span className="font-bold text-amber-950 text-[11px]">Ir a Rack:</span>
+                    {Array.from(searchResult.rackCounts.entries()).map(([rId, count]) => (
+                      <button
+                        key={rId}
+                        type="button"
+                        onClick={() => {
+                          onSelectRack?.(rId);
+                          setIsDropdownOpen(false);
+                        }}
+                        className="px-2 py-0.5 rounded-lg bg-white border border-amber-300 text-amber-950 hover:bg-amber-500 hover:text-white font-black text-[11px] transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                      >
+                        <span>Rack {rId}</span>
+                        <span className="px-1.5 py-0.2 rounded bg-amber-200 text-slate-900 text-[9px] font-black">
+                          {count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Items List */}
+                <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                  {searchResult.items.length === 0 ? (
+                    <div className="p-4 text-center text-slate-500 text-xs">
+                      No se encontraron materiales ni lotes que coincidan con "{searchQuery}".
+                    </div>
+                  ) : (
+                    searchResult.items.slice(0, 40).map(item => (
+                      <div
+                        key={item.ubicacion}
+                        onClick={() => {
+                          onSelectRack?.(item.rackId);
+                          onSelectSlotByUbicacion?.(item.ubicacion, item.rackId);
+                          setIsDropdownOpen(false);
+                        }}
+                        className="p-2.5 hover:bg-emerald-50/80 cursor-pointer transition-colors flex items-start gap-2.5"
+                      >
+                        <div className="w-14 shrink-0 text-center">
+                          <span className="inline-block px-1.5 py-0.5 rounded bg-[#0a5c36] text-white font-black text-[10px]">
+                            RACK {item.rackId}
+                          </span>
+                          <span className="block font-mono text-[9.5px] text-slate-500 mt-0.5 font-bold">
+                            Nivel {item.nivel}
+                          </span>
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-black text-slate-900 text-xs bg-amber-100 text-amber-950 px-1.5 py-0.2 rounded border border-amber-300">
+                              {item.displayText}
+                            </span>
+                            <span className="font-mono text-[10px] text-slate-500">
+                              Pos: {item.ubicacion}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-700 font-semibold truncate mt-0.5">
+                            {item.descripcion}
+                          </p>
+                          {item.lote && (
+                            <span className="text-[9.5px] text-slate-400 font-mono block">
+                              Lote: {item.lote}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Footer hint */}
+                {searchResult.matchedRackIds.length > 0 && (
+                  <div className="bg-slate-50 px-3 py-1.5 text-center text-[10px] text-slate-500 border-t border-slate-100 flex items-center justify-between">
+                    <span>Haz clic para ir a la posición</span>
+                    <span>
+                      <kbd className="px-1 py-0.5 bg-white border border-slate-300 rounded font-mono font-bold">Enter</kbd> = Rack {searchResult.matchedRackIds[0]}
+                    </span>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 

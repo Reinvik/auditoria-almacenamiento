@@ -122,7 +122,10 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
                         let cellClass = '';
                         let textClass = '';
 
-                        if (slot.isEmpty) {
+                        if (searchMatch) {
+                          cellClass = 'bg-amber-100 text-amber-950 hover:bg-amber-200 border-amber-400 active:scale-98 shadow-md';
+                          textClass = 'font-black text-xs sm:text-base tracking-tight text-amber-950 underline decoration-amber-500 decoration-2';
+                        } else if (slot.isEmpty) {
                           cellClass = 'bg-black text-white hover:bg-slate-900 border-slate-700 active:scale-98';
                           textClass = 'font-bold text-xs sm:text-sm tracking-wider';
                         } else {
@@ -130,10 +133,16 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
                           textClass = 'font-extrabold text-xs sm:text-sm tracking-tight';
                         }
 
-                        const opacityClass = filterActive ? 'opacity-100' : 'opacity-20 hover:opacity-100';
+                        // Si hay búsqueda activa, atenuar las celdas que no coinciden para que las coincidencias resalten inmediatamente
+                        let opacityClass = 'opacity-100';
+                        if (!filterActive) {
+                          opacityClass = 'opacity-20 hover:opacity-100';
+                        } else if (query) {
+                          opacityClass = searchMatch ? '!opacity-100' : 'opacity-25 hover:opacity-80 transition-opacity';
+                        }
 
                         const highlightClass = searchMatch 
-                          ? 'ring-4 ring-emerald-500 scale-[1.03] z-10 shadow-lg shadow-emerald-500/50 !opacity-100' 
+                          ? 'ring-4 ring-amber-400 scale-[1.04] z-10 shadow-xl shadow-amber-400/50 !opacity-100 animate-in fade-in duration-200' 
                           : '';
 
                         return (
@@ -144,6 +153,11 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
                             className={`relative border py-3 sm:py-3.5 px-2 cursor-pointer transition-all duration-150 select-none ${cellClass} ${opacityClass} ${highlightClass}`}
                           >
                             <div className="flex flex-col items-center justify-center min-h-[38px] sm:min-h-[46px]">
+                              {searchMatch && (
+                                <span className="px-1 py-0.2 rounded bg-amber-400 text-slate-950 font-black text-[9px] uppercase tracking-wider mb-0.5">
+                                  COINCIDENCIA
+                                </span>
+                              )}
                               <span className={textClass}>
                                 {slot.displayText}
                               </span>
@@ -206,11 +220,28 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
                       const searchMatch = isSearchMatch(slot);
                       const filterActive = isFilterActive(slot);
 
-                      let cellBg = slot.isEmpty 
-                        ? 'bg-black text-white border-slate-800' 
-                        : 'bg-white text-black border-slate-300 hover:border-[#0a5c36]';
-                      const opacity = filterActive ? 'opacity-100' : 'opacity-20';
-                      const ring = searchMatch ? 'ring-4 ring-emerald-500 z-10 scale-105 shadow-md shadow-emerald-500/30' : '';
+                      let cellBg = '';
+                      let textCol = '';
+
+                      if (searchMatch) {
+                        cellBg = 'bg-amber-100 text-amber-950 border-amber-400 font-black';
+                        textCol = 'text-amber-950 font-black';
+                      } else if (slot.isEmpty) {
+                        cellBg = 'bg-black text-white border-slate-800';
+                        textCol = 'text-white font-extrabold';
+                      } else {
+                        cellBg = 'bg-white text-black border-slate-300 hover:border-[#0a5c36]';
+                        textCol = 'text-black font-extrabold';
+                      }
+
+                      let opacity = 'opacity-100';
+                      if (!filterActive) {
+                        opacity = 'opacity-20';
+                      } else if (query) {
+                        opacity = searchMatch ? '!opacity-100' : 'opacity-25 hover:opacity-80 transition-opacity';
+                      }
+
+                      const ring = searchMatch ? 'ring-4 ring-amber-400 z-10 scale-110 shadow-xl shadow-amber-400/50 !opacity-100' : '';
 
                       return (
                         <div
@@ -219,7 +250,7 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
                           title={`${slot.ubicacion} • ${slot.displayText}`}
                           className={`relative w-20 h-14 rounded-lg border flex flex-col items-center justify-center cursor-pointer transition-all ${cellBg} ${opacity} ${ring} hover:scale-105 shadow-xs`}
                         >
-                          <span className={`text-[11px] font-extrabold leading-tight text-center px-1 ${slot.isEmpty ? 'text-white' : 'text-black'}`}>
+                          <span className={`text-[11px] leading-tight text-center px-1 ${textCol}`}>
                             {slot.displayText}
                           </span>
                           <span className="text-[8.5px] opacity-60 font-mono">
