@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
 import { AuditFinding } from '../types/warehouse';
-import { generateEmailReport, exportFindingsToExcel } from '../utils/reportGenerator';
+import { 
+  generateEmailReport, 
+  exportFindingsToExcel,
+  DEFAULT_EMAIL_TO,
+  DEFAULT_EMAIL_CC
+} from '../utils/reportGenerator';
 import { 
   X, 
   Mail, 
   Copy, 
   Check, 
   FileSpreadsheet, 
-  Trash2
+  Trash2,
+  Save,
+  RotateCcw,
+  ExternalLink
 } from 'lucide-react';
 
 interface ReportModalProps {
@@ -16,6 +24,9 @@ interface ReportModalProps {
   auditFindings: Map<string, AuditFinding>;
   onClearAllAudit: () => void;
 }
+
+const STORAGE_KEY_TO = 'cial_report_email_to_v1';
+const STORAGE_KEY_CC = 'cial_report_email_cc_v1';
 
 export const ReportModal: React.FC<ReportModalProps> = ({
   isOpen,
@@ -26,9 +37,51 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   if (!isOpen) return null;
 
   const findingsList = Array.from(auditFindings.values());
-  const report = generateEmailReport(findingsList);
+
+  const [emailTo, setEmailTo] = useState<string>(() => {
+    return localStorage.getItem(STORAGE_KEY_TO) || DEFAULT_EMAIL_TO;
+  });
+  const [emailCc, setEmailCc] = useState<string>(() => {
+    return localStorage.getItem(STORAGE_KEY_CC) || DEFAULT_EMAIL_CC;
+  });
+  const [savedFeedback, setSavedFeedback] = useState<string | null>(null);
+
+  const report = generateEmailReport(findingsList, emailTo, emailCc);
   const [copiedHtml, setCopiedHtml] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
+
+  const handleToChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setEmailTo(val);
+    localStorage.setItem(STORAGE_KEY_TO, val);
+  };
+
+  const handleCcChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setEmailCc(val);
+    localStorage.setItem(STORAGE_KEY_CC, val);
+  };
+
+  const handleManualSave = () => {
+    localStorage.setItem(STORAGE_KEY_TO, emailTo);
+    localStorage.setItem(STORAGE_KEY_CC, emailCc);
+    setSavedFeedback('¡Correos guardados para futuras ocasiones!');
+    setTimeout(() => setSavedFeedback(null), 3500);
+  };
+
+  const handleResetDefaults = () => {
+    setEmailTo(DEFAULT_EMAIL_TO);
+    setEmailCc(DEFAULT_EMAIL_CC);
+    localStorage.setItem(STORAGE_KEY_TO, DEFAULT_EMAIL_TO);
+    localStorage.setItem(STORAGE_KEY_CC, DEFAULT_EMAIL_CC);
+    setSavedFeedback('Restablecido a destinatarios CIAL por defecto');
+    setTimeout(() => setSavedFeedback(null), 3500);
+  };
+
+  const handleOpenOutlook = () => {
+    const mailtoUrl = `mailto:${encodeURIComponent(emailTo)}?cc=${encodeURIComponent(emailCc)}&subject=${encodeURIComponent(report.subject)}&body=${encodeURIComponent(report.bodyText)}`;
+    window.location.href = mailtoUrl;
+  };
 
   const handleCopyHtml = async () => {
     try {
@@ -103,25 +156,82 @@ export const ReportModal: React.FC<ReportModalProps> = ({
 
         {/* Content */}
         <div className="p-5 overflow-y-auto space-y-4 text-xs">
-          {/* Metadata Recipients */}
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-            <div className="grid grid-cols-[60px_1fr] items-center gap-2">
-              <span className="font-bold text-slate-600 uppercase text-[10px]">Para:</span>
-              <span className="font-mono text-slate-800 bg-white border border-slate-200 px-2 py-1 rounded text-[11px] truncate">
-                {report.to}
-              </span>
+          {/* Metadata Recipients Form */}
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+            {/* Para: */}
+            <div className="flex flex-col sm:grid sm:grid-cols-[55px_1fr] sm:items-center gap-1.5">
+              <label htmlFor="report-email-to" className="font-bold text-slate-700 uppercase text-[10px] tracking-wider">
+                Para:
+              </label>
+              <input
+                id="report-email-to"
+                type="text"
+                value={emailTo}
+                onChange={handleToChange}
+                placeholder="destinatarios separados por punto y coma (;)"
+                className="w-full bg-white border border-slate-300 focus:border-[#0a5c36] focus:ring-2 focus:ring-[#0a5c36]/20 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-800 outline-hidden transition-all shadow-xs"
+                title="Destinatarios principales (separados por ;)"
+              />
             </div>
-            <div className="grid grid-cols-[60px_1fr] items-center gap-2">
-              <span className="font-bold text-slate-600 uppercase text-[10px]">CC:</span>
-              <span className="font-mono text-slate-800 bg-white border border-slate-200 px-2 py-1 rounded text-[11px] truncate">
-                {report.cc}
-              </span>
+
+            {/* CC: */}
+            <div className="flex flex-col sm:grid sm:grid-cols-[55px_1fr] sm:items-center gap-1.5">
+              <label htmlFor="report-email-cc" className="font-bold text-slate-700 uppercase text-[10px] tracking-wider">
+                CC:
+              </label>
+              <input
+                id="report-email-cc"
+                type="text"
+                value={emailCc}
+                onChange={handleCcChange}
+                placeholder="destinatarios en copia separados por punto y coma (;)"
+                className="w-full bg-white border border-slate-300 focus:border-[#0a5c36] focus:ring-2 focus:ring-[#0a5c36]/20 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-800 outline-hidden transition-all shadow-xs"
+                title="Destinatarios en copia (separados por ;)"
+              />
             </div>
-            <div className="grid grid-cols-[60px_1fr] items-center gap-2">
-              <span className="font-bold text-slate-600 uppercase text-[10px]">Asunto:</span>
-              <span className="font-bold text-[#0a5c36] bg-[#e6f4ea] border border-[#a3cfb6] px-2 py-1 rounded text-[11px]">
-                {report.subject}
-              </span>
+
+            {/* Asunto: */}
+            <div className="flex flex-col sm:grid sm:grid-cols-[55px_1fr] sm:items-center gap-1.5">
+              <span className="font-bold text-slate-700 uppercase text-[10px] tracking-wider">Asunto:</span>
+              <div className="font-bold text-[#0a5c36] bg-[#e6f4ea] border border-[#a3cfb6] px-3 py-1.5 rounded-lg text-[11px] flex items-center justify-between">
+                <span>{report.subject}</span>
+                <span className="text-[10px] font-normal text-emerald-800 opacity-75 hidden sm:inline">(Fecha automática)</span>
+              </div>
+            </div>
+
+            {/* Recipients Actions Bar */}
+            <div className="flex flex-wrap items-center justify-between pt-2 border-t border-slate-200 gap-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleManualSave}
+                  className="px-2.5 py-1 rounded-lg bg-[#0a5c36] hover:bg-[#08482a] text-white font-bold text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Guardar correos</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleResetDefaults}
+                  className="px-2.5 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Volver a los correos predeterminados CIAL"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Restablecer predeterminados</span>
+                </button>
+              </div>
+
+              {savedFeedback ? (
+                <span className="text-emerald-700 font-bold bg-emerald-100/80 border border-emerald-300 px-2.5 py-0.5 rounded-md text-[11px] flex items-center gap-1 animate-in fade-in">
+                  <Check className="w-3 h-3 text-emerald-700" />
+                  {savedFeedback}
+                </span>
+              ) : (
+                <span className="text-slate-400 text-[10px] italic">
+                  💾 Guardado automáticamente en este navegador para futuras ocasiones.
+                </span>
+              )}
             </div>
           </div>
 
@@ -149,7 +259,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
 
         {/* Footer Actions */}
         <div className="bg-slate-50 px-5 py-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleExportExcel}
               disabled={findingsList.length === 0}
@@ -164,6 +274,14 @@ export const ReportModal: React.FC<ReportModalProps> = ({
             >
               {copiedText ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copiedText ? 'Texto Copiado' : 'Copiar Texto'}</span>
+            </button>
+            <button
+              onClick={handleOpenOutlook}
+              className="px-3.5 py-1.5 rounded-xl bg-sky-50 border border-sky-200 text-sky-800 hover:bg-sky-100 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Abrir directamente en Outlook con los destinatarios y asunto listos"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-sky-600" />
+              <span>Abrir en Outlook</span>
             </button>
           </div>
 

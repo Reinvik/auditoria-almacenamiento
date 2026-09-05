@@ -11,7 +11,14 @@ export interface EmailReportData {
   differencesCount: number;
 }
 
-export function generateEmailReport(findings: AuditFinding[]): EmailReportData {
+export const DEFAULT_EMAIL_TO = 'claudio.munoz@cial.cl; fernando.ramos@cial.cl; christopher.aleman@cial.cl; marcos.primera@cial.cl';
+export const DEFAULT_EMAIL_CC = 'luis.puchi@cial.cl; controldeexistencias@cialalimentos.cl';
+
+export function generateEmailReport(
+  findings: AuditFinding[], 
+  customTo?: string, 
+  customCc?: string
+): EmailReportData {
   const today = new Date();
   const dateStr = today.toLocaleDateString('es-CL', {
     day: '2-digit',
@@ -22,8 +29,8 @@ export function generateEmailReport(findings: AuditFinding[]): EmailReportData {
   const discrepancies = findings.filter(f => f.discrepancyType !== 'NONE');
   const hasDiffs = discrepancies.length > 0;
 
-  const to = 'claudio.munoz@cial.cl; fernando.ramos@cial.cl; christopher.aleman@cial.cl; marcos.primera@cial.cl';
-  const cc = 'irene.espina@cial.cl; controldeexistencias@cialalimentos.cl';
+  const to = customTo !== undefined ? customTo : DEFAULT_EMAIL_TO;
+  const cc = customCc !== undefined ? customCc : DEFAULT_EMAIL_CC;
   const subject = `Validación altura ${dateStr}`;
 
   let bodyText = '';
