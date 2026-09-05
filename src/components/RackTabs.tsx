@@ -1,13 +1,24 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { 
   ChevronLeft, 
   ChevronRight, 
   Columns, 
   Grid3X3, 
   SplitSquareVertical, 
-  Filter
+  Filter,
+  Users,
+  Scale,
+  Building2,
+  Snowflake,
+  Check,
+  X
 } from 'lucide-react';
-import { RackConfig, AislePair } from '../types/warehouse';
+import { 
+  RackConfig, 
+  AislePair, 
+  WarehouseZone, 
+  WorkloadDistributionConfig 
+} from '../types/warehouse';
 
 export type ViewMode = 'audit_excel' | 'elevation_wall' | 'double_aisle';
 export type FilterType = 'ALL' | 'ONLY_EMPTY' | 'ONLY_OCCUPIED' | 'MULTI_PALLETS' | 'WITH_DISCREPANCIES';
@@ -30,7 +41,14 @@ interface RackTabsProps {
     totalPallets: number;
     occupancyRate: number;
   };
+  activeZone: WarehouseZone;
+  onChangeZone: (zone: WarehouseZone) => void;
+  workloadConfig: WorkloadDistributionConfig | null;
+  activeAuditorId: number | null;
+  onSelectAuditor: (id: number | null) => void;
+  onOpenWorkloadModal: () => void;
 }
+
 
 export const RackTabs: React.FC<RackTabsProps> = ({
   racks,
@@ -40,9 +58,66 @@ export const RackTabs: React.FC<RackTabsProps> = ({
   onChangeViewMode,
   filterType,
   onChangeFilter,
+  aisles,
+  selectedAisleId,
+  onSelectAisle,
   rackStats,
+  activeZone,
+  onChangeZone,
+  workloadConfig,
+  activeAuditorId,
+  onSelectAuditor,
+  onOpenWorkloadModal,
 }) => {
   const tabsContainerRef = useRef<HTMLDivElement>(null);
+
+  // Determinar auditor activo y sus asignaciones
+  const activeAssignment = useMemo(() => {
+    if (!workloadConfig || activeAuditorId === null) return null;
+    return workloadConfig.assignments.find(a => a.id === activeAuditorId) || null;
+  }, [workloadConfig, activeAuditorId]);
+
+  // Racks visibles según auditor activo o zona seleccionada
+  const visibleRacks = useMemo(() => {
+    if (activeAssignment) {
+      return racks.filter(r => activeAssignment.rackIds.includes(r.id));
+    }
+    if (activeZone === 'CONGELADO') {
+      return racks.filter(r => r.id <= 16);
+    }
+    if (activeZone === 'REFRIGERADO') {
+      return racks.filter(r => r.id >= 17);
+    }
+    return racks;
+  }, [racks, activeAssignment, activeZone]);
+
+  // Pasillos visibles según auditor activo o zona seleccionada
+  const visibleAisles = useMemo(() => {
+    if (activeAssignment) {
+      return aisles.filter(a => activeAssignment.aisleIds.includes(a.id));
+    }
+    if (activeZone === 'CONGELADO') {
+      return aisles.filter(a => a.id <= 8);
+    }
+    if (activeZone === 'REFRIGERADO') {
+      return aisles.filter(a => a.id >= 9);
+    }
+    return aisles;
+  }, [aisles, activeAssignment, activeZone]);
+
+  // Auto-seleccionar primer rack visible si el actual no pertenece a la selección
+  useEffect(() => {
+    if (visibleRacks.length > 0 && !visibleRacks.some(r => r.id === selectedRackId)) {
+      onSelectRack(visibleRacks[0].id);
+    }
+  }, [visibleRacks, selectedRackId, onSelectRack]);
+
+  // Auto-seleccionar primer pasillo visible si el actual no pertenece a la selección
+  useEffect(() => {
+    if (visibleAisles.length > 0 && !visibleAisles.some(a => a.id === selectedAisleId)) {
+      onSelectAisle(visibleAisles[0].id);
+    }
+  }, [visibleAisles, selectedAisleId, onSelectAisle]);
 
   useEffect(() => {
     if (tabsContainerRef.current) {
@@ -53,9 +128,9 @@ export const RackTabs: React.FC<RackTabsProps> = ({
     }
   }, [selectedRackId]);
 
-  const currentIndex = racks.findIndex(r => r.id === selectedRackId);
-  const prevRack = currentIndex > 0 ? racks[currentIndex - 1] : null;
-  const nextRack = currentIndex < racks.length - 1 ? racks[currentIndex + 1] : null;
+  const currentIndex = visibleRacks.findIndex(r => r.id === selectedRackId);
+  const prevRack = currentIndex > 0 ? visibleRacks[currentIndex - 1] : null;
+  const nextRack = currentIndex < visibleRacks.length - 1 ? visibleRacks[currentIndex + 1] : null;
 
   return (
     <div className="bg-white border-b border-slate-200 px-4 py-2.5 space-y-2.5 shadow-sm">
@@ -77,7 +152,7 @@ export const RackTabs: React.FC<RackTabsProps> = ({
             onChange={e => onSelectRack(Number(e.target.value))}
             className="bg-slate-50 border border-slate-300 text-slate-900 text-xs font-black rounded-xl px-3 py-1.5 focus:outline-none focus:border-[#0a5c36] shadow-sm cursor-pointer"
           >
-            {racks.map(r => (
+            {visibleRacks.map(r => (
               <option key={r.id} value={r.id}>
                 {r.name} ({r.moduleCount} mód / {r.moduleCount * 6} pos)
               </option>
@@ -194,12 +269,146 @@ export const RackTabs: React.FC<RackTabsProps> = ({
         </div>
       </div>
 
-      {/* Bottom Row: CIAL Style Rack Tabs (RACK 1 to RACK 29) */}
+      {/* Middle Row: Zone Selector & Auditor Filter */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+        {/* Cámara / Sector */}
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] font-black text-slate-400 uppercase mr-1 hidden sm:inline">Cámara:</span>
+          <button
+            onClick={() => {
+              onChangeZone('ALL');
+              if (activeAuditorId !== null) onSelectAuditor(null);
+            }}
+            className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
+              activeZone === 'ALL' && activeAuditorId === null
+                ? 'bg-[#0a5c36] text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <Building2 className="w-3.5 h-3.5" />
+            <span>Todo el CD</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onChangeZone('CONGELADO');
+              if (activeAuditorId !== null) onSelectAuditor(null);
+            }}
+            className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
+              activeZone === 'CONGELADO' && activeAuditorId === null
+                ? 'bg-[#0a5c36] text-white shadow-xs ring-1 ring-emerald-500'
+                : 'bg-slate-100 text-slate-700 hover:bg-[#e6f4ea] hover:text-[#0a5c36]'
+            }`}
+            title="Pasillos 1 al 8 • Racks 1 al 16 (1 persona)"
+          >
+            <Snowflake className="w-3.5 h-3.5 text-sky-500" />
+            <span>❄️ Congelado (P1-8)</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onChangeZone('REFRIGERADO');
+              if (activeAuditorId !== null) onSelectAuditor(null);
+            }}
+            className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
+              activeZone === 'REFRIGERADO' && activeAuditorId === null
+                ? 'bg-[#0a5c36] text-white shadow-xs ring-1 ring-emerald-500'
+                : 'bg-slate-100 text-slate-700 hover:bg-[#e6f4ea] hover:text-[#0a5c36]'
+            }`}
+            title="Pasillos 9 al 15 • Racks 17 al 29 (Auditores variables)"
+          >
+            <span>🧊 Refrigerado (P9+)</span>
+          </button>
+        </div>
+
+        {/* Filtro por Auditor & Botón Repartir */}
+        <div className="flex items-center gap-1.5 ml-auto">
+          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+            <span className="text-[10px] font-black text-slate-400 uppercase px-1.5 hidden sm:inline">Auditor:</span>
+            
+            <button
+              onClick={() => onSelectAuditor(null)}
+              className={`px-2 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
+                activeAuditorId === null
+                  ? 'bg-slate-800 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Todos
+            </button>
+
+            {workloadConfig?.assignments.map(a => (
+              <button
+                key={a.id}
+                onClick={() => onSelectAuditor(a.id)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeAuditorId === a.id
+                    ? 'text-white shadow-xs ring-1 ring-black/20'
+                    : 'text-slate-700 hover:bg-slate-200'
+                }`}
+                style={{
+                  backgroundColor: activeAuditorId === a.id ? a.color : undefined
+                }}
+                title={`Auditor ${a.id}: Pasillos ${a.aisleIds.join(', ')} (${a.totalSlots} pos)`}
+              >
+                <span 
+                  className="w-2 h-2 rounded-full inline-block"
+                  style={{ backgroundColor: activeAuditorId === a.id ? '#ffffff' : a.color }}
+                />
+                <span>#{a.id}</span>
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={onOpenWorkloadModal}
+            className="px-2.5 py-1 rounded-xl text-xs font-black bg-[#e6f4ea] text-[#08482a] hover:bg-[#d0ebd8] border border-[#a3cfb6] flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+            title="Configurar y repartir pasillos entre los auditores"
+          >
+            <Scale className="w-3.5 h-3.5 text-[#0a5c36]" />
+            <span className="hidden sm:inline">Repartir Trabajo</span>
+            <span className="sm:hidden">Reparto</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Banner de Auditor Asignado (si hay un auditor activo) */}
+      {activeAssignment && (
+        <div className="bg-[#e6f4ea] border border-[#a3cfb6] px-3 py-1.5 rounded-xl flex items-center justify-between text-xs shadow-xs">
+          <div className="flex items-center gap-2">
+            <span 
+              className="w-5 h-5 rounded-lg text-white font-black text-[10px] flex items-center justify-center shadow-xs"
+              style={{ backgroundColor: activeAssignment.color }}
+            >
+              #{activeAssignment.id}
+            </span>
+            <span className="font-bold text-slate-800">
+              Viendo asignación de <strong>{activeAssignment.name}</strong>:
+            </span>
+            <span className="text-[#08482a] font-black">
+              🚪 Pasillos {activeAssignment.aisleIds.join(', ')} • 🏗️ Racks {activeAssignment.rackIds[0]} al {activeAssignment.rackIds[activeAssignment.rackIds.length - 1]}
+            </span>
+            <span className="text-slate-400 hidden sm:inline">•</span>
+            <span className="text-slate-600 font-semibold hidden sm:inline">
+              {activeAssignment.totalSlots.toLocaleString()} posiciones asignadas ({activeAssignment.percentage}%)
+            </span>
+          </div>
+          <button
+            onClick={() => onSelectAuditor(null)}
+            className="text-xs font-black text-[#0a5c36] hover:text-[#08482a] flex items-center gap-1 underline cursor-pointer shrink-0"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Ver Todo</span>
+          </button>
+        </div>
+      )}
+
+      {/* Bottom Row: CIAL Style Rack Tabs (Filtrados por auditor o zona) */}
       <div 
         ref={tabsContainerRef}
         className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none text-xs border-t border-slate-100 pt-2"
       >
-        {racks.map(rack => {
+        {visibleRacks.map(rack => {
           const isActive = rack.id === selectedRackId;
           return (
             <button
@@ -220,3 +429,4 @@ export const RackTabs: React.FC<RackTabsProps> = ({
     </div>
   );
 };
+

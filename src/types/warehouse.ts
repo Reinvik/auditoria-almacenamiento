@@ -124,3 +124,26 @@ export function computeDifferenceLabel(
     type: 'SOBRA_FISICA'
   };
 }
+
+export type WarehouseZone = 'ALL' | 'CONGELADO' | 'REFRIGERADO';
+
+export interface AuditorAssignment {
+  id: number;           // 1, 2, 3...
+  name: string;         // "Auditor 1", "Auditor 2" o nombre asignado
+  color: string;        // Color distintivo para la interfaz
+  aisleIds: number[];   // Lista de IDs de pasillos asignados (ej: [9, 10])
+  rackIds: number[];    // Lista de IDs de racks asignados (ej: [17, 18, 19, 20])
+  totalSlots: number;   // Total de posiciones físicas (huecos de altura)
+  occupiedSlots: number;// Posiciones ocupadas según SAP
+  totalPallets: number; // Total de pallets según SAP
+  percentage: number;   // Porcentaje del total de la zona (ej: 33.3%)
+}
+
+export interface WorkloadDistributionConfig {
+  zone: WarehouseZone;
+  auditorCount: number;
+  balanceMetric: 'totalSlots' | 'occupiedSlots' | 'totalPallets';
+  assignments: AuditorAssignment[];
+  updatedAt: string;
+}
+

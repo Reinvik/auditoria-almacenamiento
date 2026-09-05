@@ -5,7 +5,8 @@ import {
   ClipboardCheck, 
   FileText, 
   Boxes,
-  X
+  X,
+  Scale
 } from 'lucide-react';
 import cialLogo from '../assets/cial-alimentos-logo.png';
 
@@ -23,6 +24,8 @@ interface NavbarProps {
   onOpenImport: () => void;
   onOpenReport: () => void;
   onResetData: () => void;
+  onOpenWorkload: () => void;
+  activeAuditorName?: string | null;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -38,7 +41,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   auditCount,
   onOpenImport,
   onOpenReport,
+  onOpenWorkload,
+  activeAuditorName,
 }) => {
+
   return (
     <header className="bg-[#0a5c36] text-white shadow-lg shadow-emerald-950/20 select-none shrink-0 sticky top-0 z-40 border-b border-[#08482a]">
       <div className="max-w-7xl mx-auto px-4 py-2.5 flex flex-col md:flex-row items-center justify-between gap-3">
@@ -67,6 +73,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Quick mobile buttons */}
           <div className="flex md:hidden items-center gap-1.5">
+            <button
+              onClick={onOpenWorkload}
+              className="p-2 rounded-lg bg-[#08482a] border border-emerald-700 text-emerald-100 hover:text-white"
+              title="Repartir Trabajo"
+            >
+              <Scale className="w-4 h-4 text-emerald-300" />
+            </button>
             <button
               onClick={onToggleAuditMode}
               className={`p-2 rounded-lg text-xs font-bold flex items-center gap-1 border transition-all ${
@@ -144,6 +157,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Desktop action buttons */}
           <div className="hidden md:flex items-center gap-2">
+            {/* Repartir Trabajo */}
+            <button
+              onClick={onOpenWorkload}
+              className="px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 bg-[#08482a] border border-emerald-600/60 text-emerald-100 hover:bg-[#063921] hover:text-white transition-all shadow-sm cursor-pointer"
+              title="Distribuir equitativamente el trabajo de auditoría entre auditores"
+            >
+              <Scale className="w-3.5 h-3.5 text-emerald-300" />
+              <span>Repartir Trabajo</span>
+            </button>
+
             {/* Toggle Audit Mode */}
             <button
               onClick={onToggleAuditMode}
@@ -180,6 +203,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span>Cargar Data SAP</span>
             </button>
           </div>
+
         </div>
       </div>
     </header>
