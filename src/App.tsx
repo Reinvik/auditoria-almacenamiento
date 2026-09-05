@@ -37,7 +37,8 @@ const LOCAL_STORAGE_STOCK_KEY = 'auditoria_almacenamiento_stock_v1';
 const LOCAL_STORAGE_AUDIT_KEY = 'auditoria_almacenamiento_audit_v1';
 const LOCAL_STORAGE_ZONE_KEY = 'auditoria_almacenamiento_zone_v1';
 const LOCAL_STORAGE_AUDITOR_ID_KEY = 'auditoria_almacenamiento_my_auditor_id';
-const LOCAL_STORAGE_WORKLOAD_KEY = 'auditoria_almacenamiento_workload_v1';
+const LOCAL_STORAGE_WORKLOAD_KEY = 'auditoria_almacenamiento_workload_v2';
+
 
 export default function App() {
 
@@ -133,7 +134,10 @@ export default function App() {
   const [workloadConfig, setWorkloadConfig] = useState<WorkloadDistributionConfig | null>(() => {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_WORKLOAD_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.version === 2) return parsed;
+      }
     } catch (e) {}
     return null;
   });
@@ -145,6 +149,7 @@ export default function App() {
       }
     } catch (e) {}
   }, [workloadConfig]);
+
 
   const [isWorkloadOpen, setIsWorkloadOpen] = useState<boolean>(false);
 
@@ -195,10 +200,16 @@ export default function App() {
     return calculateRackStats(currentRackSlots);
   }, [currentRackSlots]);
 
-  // Inicializar distribución por defecto si no existe (Refrigerado 2 auditores)
+  // Inicializar distribución por defecto si no existe (Refrigerado 2 auditores por puntos de esfuerzo)
   useEffect(() => {
     if (!workloadConfig && stockIndex.size > 0) {
-      const defaultDist = calculateOptimalWorkloadDistribution('REFRIGERADO', 2, 'totalSlots', stockIndex);
+      const defaultDist = calculateOptimalWorkloadDistribution(
+        'REFRIGERADO', 
+        2, 
+        'effortPoints', 
+        stockIndex,
+        'by_aisles'
+      );
       setWorkloadConfig(defaultDist);
     }
   }, [workloadConfig, stockIndex]);
@@ -251,23 +262,27 @@ export default function App() {
     }
   }, [visibleAisles, selectedAisleId]);
 
-  // Estadísticas de avance personal del auditor
+  // Estadísticas de avance personal del auditor (por puntos de esfuerzo y celdas)
   const auditorProgressStats = useMemo(() => {
     if (!currentAuditorAssignment) return null;
     let auditedCount = 0;
+    let verifiedPoints = 0;
     for (const finding of auditFindings.values()) {
       if (currentAuditorAssignment.rackIds.includes(finding.rackId)) {
         auditedCount++;
+        verifiedPoints += (finding.systemPallets === 0 ? 0 : (finding.systemPallets === 1 ? 1 : 2));
       }
     }
-    const total = currentAuditorAssignment.totalSlots;
-    const percent = total > 0 ? Math.round((auditedCount / total) * 1000) / 10 : 0;
+    const totalPts = currentAuditorAssignment.effortPoints || 1;
+    const percent = totalPts > 0 ? Math.round((verifiedPoints / totalPts) * 1000) / 10 : 0;
     return {
       auditedCount,
-      totalSlots: total,
+      verifiedPoints,
+      totalPoints: totalPts,
       percent
     };
   }, [currentAuditorAssignment, auditFindings]);
+
 
   // Global warehouse stats
   const globalWarehouseStats = useMemo(() => {
@@ -410,12 +425,19 @@ export default function App() {
             <span className="text-slate-600 font-semibold">
               Pasillos {currentAuditorAssignment.aisleIds.join(', ')} • Racks {currentAuditorAssignment.rackIds[0]} al {currentAuditorAssignment.rackIds[currentAuditorAssignment.rackIds.length - 1]}
             </span>
+            <span className="text-slate-400 hidden sm:inline">•</span>
+            <span className="px-2 py-0.5 rounded bg-emerald-100 text-[#08482a] font-black text-[11px] hidden sm:inline">
+              🎯 {currentAuditorAssignment.effortPoints.toLocaleString()} pts ({currentAuditorAssignment.percentage}%)
+            </span>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <span className="text-slate-500 font-bold">Tu Avance:</span>
               <span className="font-black text-[#0a5c36]">
-                {auditorProgressStats.auditedCount} / {auditorProgressStats.totalSlots} celdas ({auditorProgressStats.percent}%)
+                {auditorProgressStats.verifiedPoints} / {currentAuditorAssignment.effortPoints} pts ({auditorProgressStats.percent}%)
+              </span>
+              <span className="text-slate-400 text-[10.5px]">
+                ({auditorProgressStats.auditedCount} celdas)
               </span>
             </div>
             <div className="w-24 bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200 hidden sm:block">
@@ -427,6 +449,7 @@ export default function App() {
                 }}
               />
             </div>
+
             <button
               onClick={() => setActiveAuditorId(null)}
               className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] cursor-pointer"

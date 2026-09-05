@@ -3,12 +3,15 @@ import {
   WarehouseZone, 
   AuditorAssignment, 
   WorkloadDistributionConfig, 
+  BalanceMetric,
+  PartitionMode,
   StockItem 
 } from '../types/warehouse';
 import { 
   calculateOptimalWorkloadDistribution, 
   generateWorkloadShareText,
-  getAislesForZone
+  getAislesForZone,
+  getRacksForZone
 } from '../utils/workloadDistributor';
 import { 
   Users, 
@@ -23,7 +26,9 @@ import {
   Sliders,
   Snowflake,
   Flame,
-  Building2
+  Building2,
+  Box,
+  SplitSquareVertical
 } from 'lucide-react';
 
 interface WorkloadModalProps {
@@ -45,19 +50,21 @@ export const WorkloadModal: React.FC<WorkloadModalProps> = ({
   activeAuditorId,
   onSelectAuditor,
 }) => {
-  // Configuración local interactiva dentro del modal
+  // Configuración interactiva dentro del modal
   const [selectedZone, setSelectedZone] = useState<WarehouseZone>(() => currentConfig?.zone || 'REFRIGERADO');
   const [auditorCount, setAuditorCount] = useState<number>(() => currentConfig?.auditorCount || 2);
-  const [balanceMetric, setBalanceMetric] = useState<'totalSlots' | 'occupiedSlots' | 'totalPallets'>(
-    () => currentConfig?.balanceMetric || 'totalSlots'
-  );
+  const [balanceMetric, setBalanceMetric] = useState<BalanceMetric>(() => currentConfig?.balanceMetric || 'effortPoints');
+  const [partitionMode, setPartitionMode] = useState<PartitionMode>(() => currentConfig?.partitionMode || 'by_aisles');
   const [copied, setCopied] = useState(false);
 
-  // Calcular pasillos disponibles en la zona seleccionada
-  const availableAisles = useMemo(() => getAislesForZone(selectedZone), [selectedZone]);
-  const maxAuditors = Math.min(8, availableAisles.length);
+  // Calcular pasillos o racks disponibles según el modo
+  const availableUnits = useMemo(() => {
+    return partitionMode === 'by_racks'
+      ? getRacksForZone(selectedZone)
+      : getAislesForZone(selectedZone);
+  }, [selectedZone, partitionMode]);
 
-  // Asegurar que auditorCount esté dentro del rango
+  const maxAuditors = Math.min(8, availableUnits.length);
   const validAuditorCount = Math.max(1, Math.min(auditorCount, maxAuditors));
 
   // Calcular en tiempo real la distribución óptima
@@ -66,9 +73,10 @@ export const WorkloadModal: React.FC<WorkloadModalProps> = ({
       selectedZone,
       validAuditorCount,
       balanceMetric,
-      stockIndex
+      stockIndex,
+      partitionMode
     );
-  }, [selectedZone, validAuditorCount, balanceMetric, stockIndex]);
+  }, [selectedZone, validAuditorCount, balanceMetric, stockIndex, partitionMode]);
 
   if (!isOpen) return null;
 
@@ -92,7 +100,7 @@ export const WorkloadModal: React.FC<WorkloadModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 my-auto flex flex-col max-h-[92vh]">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 my-auto flex flex-col max-h-[94vh]">
         {/* Header CIAL */}
         <div className="bg-[#0a5c36] text-white px-5 py-4 flex items-center justify-between shrink-0 border-b border-[#08482a]">
           <div className="flex items-center gap-3">
@@ -104,7 +112,7 @@ export const WorkloadModal: React.FC<WorkloadModalProps> = ({
                 REPARTO JUSTO DE AUDITORÍA
               </h2>
               <p className="text-xs text-emerald-200/90 font-medium">
-                Distribución equitativa por posiciones a auditar en terreno
+                Puntaje de esfuerzo: 1 pt simple • 2 pts doble • 0 pts vacías
               </p>
             </div>
           </div>
@@ -201,11 +209,10 @@ export const WorkloadModal: React.FC<WorkloadModalProps> = ({
                   Racks 1 al 29 (Pasillos 1-15)
                 </span>
               </button>
-
             </div>
           </div>
 
-          {/* 2. Cantidad de Auditores & Métrica de Balance */}
+          {/* 2. Cantidad de Auditores y Modo de Partición */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
             {/* Control de Auditores */}
             <div>
@@ -259,61 +266,144 @@ export const WorkloadModal: React.FC<WorkloadModalProps> = ({
               </div>
             </div>
 
-            {/* Métrica de Balance */}
+            {/* Modo de División (Pasillos vs Racks) */}
             <div>
               <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-2">
-                3. Equilibrar Reparto por
+                Modo de División
               </label>
               <div className="space-y-1.5">
                 <button
                   type="button"
-                  onClick={() => setBalanceMetric('totalSlots')}
+                  onClick={() => setPartitionMode('by_aisles')}
                   className={`w-full px-3 py-1.5 rounded-lg border text-left text-xs font-bold transition-all cursor-pointer flex items-center justify-between ${
-                    balanceMetric === 'totalSlots'
+                    partitionMode === 'by_aisles'
                       ? 'bg-[#0a5c36] text-white border-[#08482a] shadow-xs'
                       : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
                   }`}
                 >
-                  <span>Posiciones Físicas (Huecos en Altura)</span>
+                  <div className="flex items-center gap-1.5">
+                    <SplitSquareVertical className="w-3.5 h-3.5" />
+                    <span>Por Pasillos Contiguos</span>
+                  </div>
                   <span className="text-[10px] font-black opacity-80">(Recomendado)</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setBalanceMetric('occupiedSlots')}
+                  onClick={() => setPartitionMode('by_racks')}
                   className={`w-full px-3 py-1.5 rounded-lg border text-left text-xs font-bold transition-all cursor-pointer flex items-center justify-between ${
-                    balanceMetric === 'occupiedSlots'
+                    partitionMode === 'by_racks'
                       ? 'bg-[#0a5c36] text-white border-[#08482a] shadow-xs'
                       : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
                   }`}
                 >
-                  <span>Posiciones con Stock (Celdas SAP)</span>
-                  <span className="text-[10px] font-black opacity-80">(Por Carga)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBalanceMetric('totalPallets')}
-                  className={`w-full px-3 py-1.5 rounded-lg border text-left text-xs font-bold transition-all cursor-pointer flex items-center justify-between ${
-                    balanceMetric === 'totalPallets'
-                      ? 'bg-[#0a5c36] text-white border-[#08482a] shadow-xs'
-                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <span>Total Pallets Registrados</span>
-                  <span className="text-[10px] font-black opacity-80">(x1 y x2)</span>
+                  <div className="flex items-center gap-1.5">
+                    <Box className="w-3.5 h-3.5" />
+                    <span>Por Racks Individuales</span>
+                  </div>
+                  <span className="text-[10px] font-black opacity-80">(Balance Milimétrico)</span>
                 </button>
               </div>
             </div>
           </div>
 
-          {/* 3. Tarjetas de Asignación Resultantes */}
+          {/* 3. Métrica de Balance */}
+          <div>
+            <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-2">
+              3. Criterio de Equilibrio de Carga
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setBalanceMetric('effortPoints')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                  balanceMetric === 'effortPoints'
+                    ? 'border-[#0a5c36] bg-[#e6f4ea] ring-2 ring-[#0a5c36]/20'
+                    : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-black text-[#0a5c36]">
+                      ⭐ Puntos de Esfuerzo
+                    </span>
+                    {balanceMetric === 'effortPoints' && (
+                      <CheckCircle2 className="w-4 h-4 text-[#0a5c36]" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-600 font-bold leading-tight">
+                    Simple (1) = 1 pt • Doble (2) = 2 pts
+                  </p>
+                </div>
+                <span className="text-[10px] text-slate-400 mt-2 block">
+                  Vacías = 0 pts (fáciles de revisar)
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setBalanceMetric('occupiedSlots')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                  balanceMetric === 'occupiedSlots'
+                    ? 'border-[#0a5c36] bg-[#e6f4ea] ring-2 ring-[#0a5c36]/20'
+                    : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-black text-slate-900">
+                      Celdas con Stock
+                    </span>
+                    {balanceMetric === 'occupiedSlots' && (
+                      <CheckCircle2 className="w-4 h-4 text-[#0a5c36]" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-600 font-bold leading-tight">
+                    Solo celdas con carga SAP
+                  </p>
+                </div>
+                <span className="text-[10px] text-slate-400 mt-2 block">
+                  Sin diferenciar 1 o 2 pallets
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setBalanceMetric('totalSlots')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                  balanceMetric === 'totalSlots'
+                    ? 'border-[#0a5c36] bg-[#e6f4ea] ring-2 ring-[#0a5c36]/20'
+                    : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-black text-slate-900">
+                      Huecos Totales
+                    </span>
+                    {balanceMetric === 'totalSlots' && (
+                      <CheckCircle2 className="w-4 h-4 text-[#0a5c36]" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-600 font-bold leading-tight">
+                    Capacidad física del rack
+                  </p>
+                </div>
+                <span className="text-[10px] text-slate-400 mt-2 block">
+                  Incluye vacías y ocupadas por igual
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* 4. Tarjetas de Asignación Resultantes */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                Asignación Equitativa Calculada ({calculatedConfig.assignments.length} bloques)
+                Asignación Equitativa Calculada ({calculatedConfig.assignments.length} auditores)
               </label>
               <span className="text-[11px] text-slate-500 font-bold">
-                Pasillos contiguos para no cruzarse
+                {partitionMode === 'by_aisles' ? 'Pasillos contiguos (no se cruzan)' : 'Racks continuos'}
               </span>
             </div>
 
@@ -385,26 +475,42 @@ export const WorkloadModal: React.FC<WorkloadModalProps> = ({
                       </button>
                     </div>
 
-                    {/* Barra de Porcentaje y Carga */}
-                    <div className="space-y-1 pt-1">
-                      <div className="flex items-center justify-between text-xs font-bold text-slate-600">
-                        <span>
-                          <strong className="text-slate-900 font-black">{assignment.totalSlots.toLocaleString()}</strong> posiciones a auditar
+                    {/* Puntaje de Esfuerzo y Desglose */}
+                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200/80 flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-black text-[#0a5c36] text-sm">
+                          🎯 {assignment.effortPoints.toLocaleString()} pts
                         </span>
-                        <span className="text-slate-500 font-semibold">
-                          {assignment.occupiedSlots.toLocaleString()} con carga ({assignment.totalPallets.toLocaleString()} pallets) • <strong className="text-[#0a5c36]">{assignment.percentage}%</strong>
+                        <span className="text-slate-400 font-bold">•</span>
+                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-[#08482a] font-black text-[11px]">
+                          {assignment.percentage}% del total
                         </span>
                       </div>
 
-                      <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200">
-                        <div 
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{ 
-                            width: `${Math.min(100, assignment.percentage)}%`,
-                            backgroundColor: assignment.color 
-                          }}
-                        />
+                      <div className="flex items-center gap-2 text-[11px] text-slate-600 font-semibold">
+                        <span>
+                          🟢 <strong className="text-slate-900 font-black">{assignment.singlePalletSlots}</strong> simples (1pt)
+                        </span>
+                        <span>•</span>
+                        <span>
+                          🟣 <strong className="text-slate-900 font-black">{assignment.doublePalletSlots}</strong> dobles (2pt)
+                        </span>
+                        <span>•</span>
+                        <span className="text-slate-400">
+                          ⬛ {assignment.emptySlots} vacías
+                        </span>
                       </div>
+                    </div>
+
+                    {/* Barra de Porcentaje */}
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200">
+                      <div 
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ 
+                          width: `${Math.min(100, assignment.percentage)}%`,
+                          backgroundColor: assignment.color 
+                        }}
+                      />
                     </div>
                   </div>
                 );
