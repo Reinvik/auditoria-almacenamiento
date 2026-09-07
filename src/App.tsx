@@ -35,7 +35,7 @@ import {
   X
 } from 'lucide-react';
 
-const LOCAL_STORAGE_STOCK_KEY = 'auditoria_almacenamiento_stock_v1';
+const LOCAL_STORAGE_STOCK_KEY = 'auditoria_almacenamiento_stock_v2';
 const LOCAL_STORAGE_AUDIT_KEY = 'auditoria_almacenamiento_audit_v1';
 const LOCAL_STORAGE_ZONE_KEY = 'auditoria_almacenamiento_zone_v1';
 const LOCAL_STORAGE_AUDITOR_ID_KEY = 'auditoria_almacenamiento_my_auditor_id';

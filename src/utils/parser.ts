@@ -60,6 +60,8 @@ export function parsePastedData(text: string): StockItem[] {
     unidad: normHeaders.findIndex(h => h.includes('unidad') || h.includes('umb') || h === 'un'),
     fecha: normHeaders.findIndex(h => h.includes('caduc') || h.includes('fecaduc') || h.includes('fecha') || h.includes('fpc')),
     peso: normHeaders.findIndex(h => h.includes('peso') || h.includes('kg')),
+    indVacia: normHeaders.findIndex(h => h.includes('vacia') || h.includes('indubicvacia')),
+    indLlena: normHeaders.findIndex(h => h.includes('llena') || h.includes('indubicllena')),
   };
 
   const hasHeaderRow = colIndex.ubicacion !== -1 || colIndex.material !== -1;
@@ -95,6 +97,20 @@ export function parsePastedData(text: string): StockItem[] {
       unidad = colIndex.unidad !== -1 ? parts[colIndex.unidad] || 'UN' : 'UN';
       fechaCaducidad = colIndex.fecha !== -1 ? parts[colIndex.fecha] || '' : '';
       peso = colIndex.peso !== -1 ? parseNumber(parts[colIndex.peso]) : 0;
+
+      // Descartar ubicaciones marcadas explícitamente como vacías
+      const isIndVacia = colIndex.indVacia !== -1 && (parts[colIndex.indVacia] === 'X' || parts[colIndex.indVacia]?.toLowerCase() === 'x');
+      const isMaterialVacio = !material || material.toLowerCase().includes('vacía') || material.toLowerCase().includes('vacia');
+
+      if (isIndVacia || isMaterialVacio) {
+        continue;
+      }
+
+      // Si no viene columna de stock pero es una posición ocupada en el reporte de altura
+      if (colIndex.stock === -1) {
+        stock = 1;
+        unidad = 'PAL';
+      }
     } else {
       // Intentar auto-detección por posición común de SAP (Material=0, Centro=1, Almacen=2, Lote=4, Desc=6, Tipo=7, Ubic=8, Stock=9, UMB=10, Fecha=11, Peso=12)
       material = parts[0] || '';
@@ -110,15 +126,16 @@ export function parsePastedData(text: string): StockItem[] {
       peso = parseNumber(parts[12]);
     }
 
-    // Limpiar ubicación (remover espacios, asegurarse de que tenga formato)
-    const cleanUbic = ubicacion.replace(/\s+/g, '');
+    // Limpiar ubicación (remover espacios y sufijos de pallets como /1, /2)
+    const cleanUbic = ubicacion.replace(/\s+/g, '').split('/')[0].trim();
     if (cleanUbic.length >= 5) {
+      const matCode = material.replace(/^0+/, '') || material;
       results.push({
-        material: material.replace(/^0+/, '') || material, // Remover ceros a la izquierda si los hay
+        material: matCode,
         centro,
         almacen,
         lote,
-        descripcion,
+        descripcion: descripcion || `MATERIAL ${matCode}`,
         tipoAlmacen,
         ubicacion: cleanUbic.padStart(7, '0'), // Normalizar a 7 dígitos
         stockDisponible: stock,
@@ -140,8 +157,9 @@ export async function parseExcelFile(file: File): Promise<StockItem[]> {
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: 'array' });
 
-  // Buscar hoja prioritaria: BBD, Stock, Base o la primera
+  // Buscar hoja prioritaria: DATA, BBD, Stock, Base o la primera
   const targetSheetName = 
+    workbook.SheetNames.find(s => s.toUpperCase() === 'DATA') ||
     workbook.SheetNames.find(s => s.toUpperCase() === 'BBD') ||
     workbook.SheetNames.find(s => s.toUpperCase().includes('STOCK')) ||
     workbook.SheetNames[0];
