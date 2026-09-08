@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { StockItem } from '../types/warehouse';
+import { isDecommissionedLocation } from '../config/warehouseConfig';
 
 /**
  * Normaliza nombres de encabezados eliminando tildes y caracteres especiales.
@@ -128,6 +129,12 @@ export function parsePastedData(text: string): StockItem[] {
 
     // Limpiar ubicación (remover espacios y sufijos de pallets como /1, /2)
     const cleanUbic = ubicacion.replace(/\s+/g, '').split('/')[0].trim();
+    
+    // Excluir automáticamente racks o módulos que ya no se usan físicamente (Rack 8 módulos 25 al 44)
+    if (isDecommissionedLocation(cleanUbic)) {
+      continue;
+    }
+
     if (cleanUbic.length >= 5) {
       const matCode = material.replace(/^0+/, '') || material;
       results.push({

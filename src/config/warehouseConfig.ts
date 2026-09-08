@@ -241,9 +241,9 @@ export const WAREHOUSE_RACKS: RackConfig[] = [
     "name": "RACK 8",
     "code": "008",
     "sheet": "RACK8",
-    "moduleCount": 44,
+    "moduleCount": 24,
     "minModule": "00801",
-    "maxModule": "00844",
+    "maxModule": "00824",
     "modules": [
       "00801",
       "00802",
@@ -268,27 +268,7 @@ export const WAREHOUSE_RACKS: RackConfig[] = [
       "00821",
       "00822",
       "00823",
-      "00824",
-      "00825",
-      "00826",
-      "00827",
-      "00828",
-      "00829",
-      "00830",
-      "00831",
-      "00832",
-      "00833",
-      "00834",
-      "00835",
-      "00836",
-      "00837",
-      "00838",
-      "00839",
-      "00840",
-      "00841",
-      "00842",
-      "00843",
-      "00844"
+      "00824"
     ]
   },
   {
@@ -1296,3 +1276,17 @@ export const DEFAULT_AISLES: AislePair[] = [
   { id: 14, name: 'Pasillo 14 (Rack 27 - 28)', leftRackId: 27, rightRackId: 28 },
   { id: 15, name: 'Pasillo 15 (Rack 29)', leftRackId: 29, rightRackId: 29 },
 ];
+
+/**
+ * Ubicaciones o módulos que ya no se usan físicamente en CD San Jorge.
+ * En particular: Rack 8, módulos del 25 al 44 (0082501 al 0084406).
+ */
+export function isDecommissionedLocation(ubicacion: string): boolean {
+  const clean = ubicacion.replace(/\s+/g, '').split('/')[0].padStart(7, '0');
+  if (clean.startsWith('008')) {
+    const modNum = parseInt(clean.substring(3, 5), 10);
+    return modNum >= 25 && modNum <= 44;
+  }
+  return false;
+}
+
