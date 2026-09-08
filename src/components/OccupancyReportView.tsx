@@ -202,38 +202,60 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
       {/* 2. TARJETAS KPI DE OCUPACIÓN EN TIEMPO REAL */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* CONGELADO */}
-        <div className="bg-white p-5 rounded-2xl border-2 border-slate-200 hover:border-[#0e4c68] transition-all shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-blue-50 text-[#0e4c68]">
-                <Snowflake className="w-5 h-5" />
-              </span>
-              <div>
-                <span className="text-xs font-black text-slate-400 uppercase tracking-wider block">CÁMARA CONGELADO</span>
-                <span className="text-sm font-black text-slate-800">Racks 1 al 8 (Pasillos 1-4)</span>
+        <div className="bg-white p-5 rounded-2xl border-2 border-slate-200 hover:border-[#0e4c68] transition-all shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-blue-50 text-[#0e4c68]">
+                  <Snowflake className="w-5 h-5" />
+                </span>
+                <div>
+                  <span className="text-xs font-black text-slate-400 uppercase tracking-wider block">CÁMARA CONGELADO</span>
+                  <span className="text-sm font-black text-slate-800">Racks 1 al 8 (Pasillos 1-4)</span>
+                </div>
               </div>
+              <span className="text-2xl sm:text-3xl font-black text-[#0e4c68]">
+                {formatPct(currentSummary.congelado.occupancyPct)}
+              </span>
             </div>
-            <span className="text-2xl sm:text-3xl font-black text-[#0e4c68]">
-              {formatPct(currentSummary.congelado.occupancyPct)}
-            </span>
-          </div>
 
-          <div className="space-y-1.5 pt-2 border-t border-slate-100 text-xs text-slate-600 font-semibold">
-            <div className="flex justify-between">
-              <span>Capacidad Almacenamiento:</span>
-              <strong className="text-slate-900 font-black">{currentSummary.congelado.capacityPositions.toLocaleString()} pos</strong>
-            </div>
-            <div className="flex justify-between">
-              <span>Posiciones Ocupadas:</span>
-              <strong className="text-emerald-700 font-black">{currentSummary.congelado.occupiedPositions.toLocaleString()} pos</strong>
-            </div>
-            <div className="flex justify-between">
-              <span>Posiciones Vacías:</span>
-              <strong className="text-slate-500 font-black">{currentSummary.congelado.emptyPositions.toLocaleString()} pos</strong>
-            </div>
-            <div className="flex justify-between text-[11px] pt-1 text-slate-400 font-medium">
-              <span>Racks Dobles: {currentSummary.congelado.doubleRacksCount} (R1, R8)</span>
-              <span>Racks Simples: {currentSummary.congelado.simpleRacksCount}</span>
+            <div className="space-y-1.5 pt-2 border-t border-slate-100 text-xs text-slate-600 font-semibold">
+              <div className="flex justify-between">
+                <span>Capacidad Almacenamiento:</span>
+                <strong className="text-slate-900 font-black">{currentSummary.congelado.capacityPositions.toLocaleString()} pos</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Posiciones Ocupadas:</span>
+                <strong className="text-emerald-700 font-black">{currentSummary.congelado.occupiedPositions.toLocaleString()} pos</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Posiciones Vacías:</span>
+                <strong className="text-slate-500 font-black">{currentSummary.congelado.emptyPositions.toLocaleString()} pos</strong>
+              </div>
+              <div className="flex justify-between text-[11px] pt-1 text-slate-400 font-medium">
+                <span>Racks Dobles: {currentSummary.congelado.doubleRacksCount} (R1, R8)</span>
+                <span>Racks Simples: {currentSummary.congelado.simpleRacksCount}</span>
+              </div>
+
+              {/* Desglose Posiciones CGO */}
+              <div className="mt-2.5 p-2.5 bg-blue-50/70 rounded-xl border border-blue-100 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between text-[11px] font-black text-[#0e4c68] border-b border-blue-200/50 pb-1">
+                  <span>Desglose Cámara (CGO)</span>
+                  <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-[#0e4c68] rounded font-bold">Racks 1-8</span>
+                </div>
+                <div className="flex justify-between text-slate-700">
+                  <span>Posiciones Simples (1 pal):</span>
+                  <strong className="text-slate-900 font-black">{currentSummary.congelado.simplePositions.toLocaleString()} pos</strong>
+                </div>
+                <div className="flex justify-between text-slate-700">
+                  <span>Posiciones Dobles (2 pal):</span>
+                  <strong className="text-purple-900 font-black">{currentSummary.congelado.doubleSlotsCount.toLocaleString()} ({currentSummary.congelado.doublePositions.toLocaleString()} pos)</strong>
+                </div>
+                <div className="flex justify-between pt-1 border-t border-blue-200/60 text-[#0e4c68] font-black">
+                  <span>Total de Posiciones (CGO):</span>
+                  <strong className="text-[#0e4c68] font-black">{currentSummary.congelado.totalPositions.toLocaleString()} pos</strong>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -247,38 +269,116 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
         </div>
 
         {/* REFRIGERADO */}
-        <div className="bg-white p-5 rounded-2xl border-2 border-slate-200 hover:border-[#0a5c36] transition-all shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-emerald-50 text-[#0a5c36]">
-                <Layers className="w-5 h-5" />
-              </span>
-              <div>
-                <span className="text-xs font-black text-slate-400 uppercase tracking-wider block">CÁMARA REFRIGERADO</span>
-                <span className="text-sm font-black text-slate-800">Racks 9 al 29 (Pasillos 5-15)</span>
+        <div className="bg-white p-5 rounded-2xl border-2 border-slate-200 hover:border-[#0a5c36] transition-all shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-emerald-50 text-[#0a5c36]">
+                  <Layers className="w-5 h-5" />
+                </span>
+                <div>
+                  <span className="text-xs font-black text-slate-400 uppercase tracking-wider block">CÁMARA REFRIGERADO</span>
+                  <span className="text-sm font-black text-slate-800">Racks 9 al 29 (Pasillos 5-15)</span>
+                </div>
               </div>
+              <span className="text-2xl sm:text-3xl font-black text-[#0a5c36]">
+                {formatPct(currentSummary.refrigerado.occupancyPct)}
+              </span>
             </div>
-            <span className="text-2xl sm:text-3xl font-black text-[#0a5c36]">
-              {formatPct(currentSummary.refrigerado.occupancyPct)}
-            </span>
-          </div>
 
-          <div className="space-y-1.5 pt-2 border-t border-slate-100 text-xs text-slate-600 font-semibold">
-            <div className="flex justify-between">
-              <span>Capacidad Almacenamiento:</span>
-              <strong className="text-slate-900 font-black">{currentSummary.refrigerado.capacityPositions.toLocaleString()} pos</strong>
-            </div>
-            <div className="flex justify-between">
-              <span>Posiciones Ocupadas:</span>
-              <strong className="text-emerald-700 font-black">{currentSummary.refrigerado.occupiedPositions.toLocaleString()} pos</strong>
-            </div>
-            <div className="flex justify-between">
-              <span>Posiciones Vacías:</span>
-              <strong className="text-slate-500 font-black">{currentSummary.refrigerado.emptyPositions.toLocaleString()} pos</strong>
-            </div>
-            <div className="flex justify-between text-[11px] pt-1 text-slate-400 font-medium">
-              <span>Racks Dobles: {currentSummary.refrigerado.doubleRacksCount}</span>
-              <span>Racks Simples: {currentSummary.refrigerado.simpleRacksCount}</span>
+            <div className="space-y-1.5 pt-2 border-t border-slate-100 text-xs text-slate-600 font-semibold">
+              <div className="flex justify-between">
+                <span>Capacidad Almacenamiento:</span>
+                <strong className="text-slate-900 font-black">{currentSummary.refrigerado.capacityPositions.toLocaleString()} pos</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Posiciones Ocupadas:</span>
+                <strong className="text-emerald-700 font-black">{currentSummary.refrigerado.occupiedPositions.toLocaleString()} pos</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Posiciones Vacías:</span>
+                <strong className="text-slate-500 font-black">{currentSummary.refrigerado.emptyPositions.toLocaleString()} pos</strong>
+              </div>
+              <div className="flex justify-between text-[11px] pt-1 text-slate-400 font-medium">
+                <span>Racks Dobles: {currentSummary.refrigerado.doubleRacksCount}</span>
+                <span>Racks Simples: {currentSummary.refrigerado.simpleRacksCount}</span>
+              </div>
+
+              {/* Desglose Posiciones Refrigerado y desmenuzado por PBK, PFW, RCK */}
+              <div className="mt-2.5 p-2.5 bg-emerald-50/70 rounded-xl border border-emerald-100 space-y-2 text-xs">
+                <div className="flex items-center justify-between text-[11px] font-black text-[#0a5c36] border-b border-emerald-200/50 pb-1">
+                  <span>Desglose Cámara Refrigerado</span>
+                  <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-[#0a5c36] rounded font-bold">Racks 9-29</span>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-slate-700">
+                    <span>Posiciones Simples:</span>
+                    <strong className="text-slate-900 font-black">{currentSummary.refrigerado.simplePositions.toLocaleString()} pos</strong>
+                  </div>
+                  <div className="flex justify-between text-slate-700">
+                    <span>Posiciones Dobles:</span>
+                    <strong className="text-purple-900 font-black">{currentSummary.refrigerado.doubleSlotsCount.toLocaleString()} ({currentSummary.refrigerado.doublePositions.toLocaleString()} pos)</strong>
+                  </div>
+                  <div className="flex justify-between pt-1 border-t border-emerald-200/60 text-[#0a5c36] font-black">
+                    <span>Total de Posiciones:</span>
+                    <strong className="text-[#0a5c36] font-black">{currentSummary.refrigerado.totalPositions.toLocaleString()} pos</strong>
+                  </div>
+                </div>
+
+                {/* Desmenuzado por PBK, PFW, RCK */}
+                {currentSummary.refrigerado.breakdownByTipo && (
+                  <div className="pt-1.5 border-t border-emerald-200/60 space-y-1">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">
+                      Desmenuzado por Tipo de Almacén:
+                    </span>
+                    
+                    {/* PBK */}
+                    {currentSummary.refrigerado.breakdownByTipo.PBK && (
+                      <div className="bg-white/90 p-1.5 rounded-lg border border-emerald-100/80 text-[11px] space-y-0.5">
+                        <div className="flex justify-between items-center font-black">
+                          <span className="text-emerald-900 font-black text-[11px]">PBK (Picking / Buffer)</span>
+                          <span className="text-emerald-800 font-black">{currentSummary.refrigerado.breakdownByTipo.PBK.totalPositions.toLocaleString()} pos</span>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-slate-600 font-medium">
+                          <span>Simples: <strong className="text-slate-800">{currentSummary.refrigerado.breakdownByTipo.PBK.simplePositions.toLocaleString()}</strong></span>
+                          <span>Dobles: <strong className="text-purple-800">{currentSummary.refrigerado.breakdownByTipo.PBK.doubleSlotsCount.toLocaleString()} ({currentSummary.refrigerado.breakdownByTipo.PBK.doublePositions.toLocaleString()} pos)</strong></span>
+                          <span>Total: <strong className="text-slate-900">{currentSummary.refrigerado.breakdownByTipo.PBK.totalPositions.toLocaleString()} pos</strong></span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* PFW */}
+                    {currentSummary.refrigerado.breakdownByTipo.PFW && (
+                      <div className="bg-white/90 p-1.5 rounded-lg border border-emerald-100/80 text-[11px] space-y-0.5">
+                        <div className="flex justify-between items-center font-black">
+                          <span className="text-amber-900 font-black text-[11px]">PFW (Pasillo Frontal / R17-19)</span>
+                          <span className="text-amber-800 font-black">{currentSummary.refrigerado.breakdownByTipo.PFW.totalPositions.toLocaleString()} pos</span>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-slate-600 font-medium">
+                          <span>Simples: <strong className="text-slate-800">{currentSummary.refrigerado.breakdownByTipo.PFW.simplePositions.toLocaleString()}</strong></span>
+                          <span>Dobles: <strong className="text-purple-800">{currentSummary.refrigerado.breakdownByTipo.PFW.doubleSlotsCount.toLocaleString()} ({currentSummary.refrigerado.breakdownByTipo.PFW.doublePositions.toLocaleString()} pos)</strong></span>
+                          <span>Total: <strong className="text-slate-900">{currentSummary.refrigerado.breakdownByTipo.PFW.totalPositions.toLocaleString()} pos</strong></span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* RCK */}
+                    {currentSummary.refrigerado.breakdownByTipo.RCK && (
+                      <div className="bg-white/90 p-1.5 rounded-lg border border-emerald-100/80 text-[11px] space-y-0.5">
+                        <div className="flex justify-between items-center font-black">
+                          <span className="text-indigo-900 font-black text-[11px]">RCK (Rack Altura / R28 N4-N6)</span>
+                          <span className="text-indigo-800 font-black">{currentSummary.refrigerado.breakdownByTipo.RCK.totalPositions.toLocaleString()} pos</span>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-slate-600 font-medium">
+                          <span>Simples: <strong className="text-slate-800">{currentSummary.refrigerado.breakdownByTipo.RCK.simplePositions.toLocaleString()}</strong></span>
+                          <span>Dobles: <strong className="text-slate-400">0</strong></span>
+                          <span>Total: <strong className="text-slate-900">{currentSummary.refrigerado.breakdownByTipo.RCK.totalPositions.toLocaleString()} pos</strong></span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -292,38 +392,65 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
         </div>
 
         {/* TOTAL ALMACÉN */}
-        <div className="bg-white p-5 rounded-2xl border-2 border-slate-200 hover:border-slate-800 transition-all shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-slate-100 text-slate-800">
-                <TrendingUp className="w-5 h-5" />
-              </span>
-              <div>
-                <span className="text-xs font-black text-slate-400 uppercase tracking-wider block">TOTAL CD SAN JORGE</span>
-                <span className="text-sm font-black text-slate-800">29 Racks Activos</span>
+        <div className="bg-white p-5 rounded-2xl border-2 border-slate-200 hover:border-slate-800 transition-all shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-slate-100 text-slate-800">
+                  <TrendingUp className="w-5 h-5" />
+                </span>
+                <div>
+                  <span className="text-xs font-black text-slate-400 uppercase tracking-wider block">TOTAL CD SAN JORGE</span>
+                  <span className="text-sm font-black text-slate-800">29 Racks Activos</span>
+                </div>
               </div>
+              <span className="text-2xl sm:text-3xl font-black text-slate-900">
+                {formatPct(currentSummary.global.occupancyPct)}
+              </span>
             </div>
-            <span className="text-2xl sm:text-3xl font-black text-slate-900">
-              {formatPct(currentSummary.global.occupancyPct)}
-            </span>
-          </div>
 
-          <div className="space-y-1.5 pt-2 border-t border-slate-100 text-xs text-slate-600 font-semibold">
-            <div className="flex justify-between">
-              <span>Capacidad Global Almacén:</span>
-              <strong className="text-slate-900 font-black">{currentSummary.global.capacityPositions.toLocaleString()} pos</strong>
-            </div>
-            <div className="flex justify-between">
-              <span>Total Posiciones Ocupadas:</span>
-              <strong className="text-slate-900 font-black">{currentSummary.global.occupiedPositions.toLocaleString()} pos</strong>
-            </div>
-            <div className="flex justify-between">
-              <span>Total Posiciones Vacías:</span>
-              <strong className="text-slate-500 font-black">{currentSummary.global.emptyPositions.toLocaleString()} pos</strong>
-            </div>
-            <div className="flex justify-between text-[11px] pt-1 text-slate-400 font-medium">
-              <span>Total Racks Dobles: {currentSummary.global.doubleRacksCount}</span>
-              <span>Total Racks Simples: {currentSummary.global.simpleRacksCount}</span>
+            <div className="space-y-1.5 pt-2 border-t border-slate-100 text-xs text-slate-600 font-semibold">
+              <div className="flex justify-between">
+                <span>Capacidad Global Almacén:</span>
+                <strong className="text-slate-900 font-black">{currentSummary.global.capacityPositions.toLocaleString()} pos</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Total Posiciones Ocupadas:</span>
+                <strong className="text-slate-900 font-black">{currentSummary.global.occupiedPositions.toLocaleString()} pos</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Total Posiciones Vacías:</span>
+                <strong className="text-slate-500 font-black">{currentSummary.global.emptyPositions.toLocaleString()} pos</strong>
+              </div>
+              <div className="flex justify-between text-[11px] pt-1 text-slate-400 font-medium">
+                <span>Total Racks Dobles: {currentSummary.global.doubleRacksCount}</span>
+                <span>Total Racks Simples: {currentSummary.global.simpleRacksCount}</span>
+              </div>
+
+              {/* Desglose Posiciones Totales CD San Jorge */}
+              <div className="mt-2.5 p-2.5 bg-slate-100/80 rounded-xl border border-slate-200 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between text-[11px] font-black text-slate-900 border-b border-slate-200 pb-1">
+                  <span>Desglose Total Almacén</span>
+                  <span className="text-[10px] px-1.5 py-0.5 bg-slate-200 text-slate-800 rounded font-bold">29 Racks</span>
+                </div>
+                <div className="flex justify-between text-slate-700">
+                  <span>Posiciones Totales Simples:</span>
+                  <strong className="text-slate-900 font-black">{currentSummary.global.simplePositions.toLocaleString()} pos</strong>
+                </div>
+                <div className="flex justify-between text-slate-700">
+                  <span>Posiciones Totales Dobles:</span>
+                  <strong className="text-purple-900 font-black">{currentSummary.global.doubleSlotsCount.toLocaleString()} ({currentSummary.global.doublePositions.toLocaleString()} pos)</strong>
+                </div>
+                <div className="flex justify-between pt-1 border-t border-slate-300 text-slate-900 font-black">
+                  <span>Posiciones Totales:</span>
+                  <strong className="text-emerald-800 font-black">{currentSummary.global.totalPositions.toLocaleString()} pos</strong>
+                </div>
+
+                <div className="pt-1 text-[10px] text-slate-500 font-medium flex justify-between border-t border-slate-200/60">
+                  <span>❄️ CGO: <strong>{currentSummary.congelado.totalPositions.toLocaleString()} pos</strong></span>
+                  <span>🧊 Refrigerado: <strong>{currentSummary.refrigerado.totalPositions.toLocaleString()} pos</strong></span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -599,15 +726,17 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                         {r.rack.name}
                       </td>
                       <td className="py-2 px-3">
-                        {r.zone === 'CONGELADO' ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-50 text-[#0e4c68] border border-blue-200">
-                            ❄️ Congelado
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-[#0a5c36] border border-emerald-200">
-                            🧊 Refrigerado
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {r.zone === 'CONGELADO' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-50 text-[#0e4c68] border border-blue-200">
+                              ❄️ CGO (Congelado)
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-[#0a5c36] border border-emerald-200">
+                              🧊 {r.rack.id === 28 ? 'PBK / RCK' : (r.rack.id >= 17 && r.rack.id <= 19 ? 'PFW' : 'PBK')}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-2 px-3 text-center">
                         {r.isDoubleRack ? (

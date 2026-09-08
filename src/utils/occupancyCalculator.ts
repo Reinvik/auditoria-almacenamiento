@@ -15,6 +15,19 @@ export interface RackOccupancyMetrics {
   occupancyPct: number; // (occupiedPositions / capacityPositions) * 100
 }
 
+export interface TipoAlmacenBreakdown {
+  tipo: 'CGO' | 'PBK' | 'PFW' | 'RCK';
+  name: string;
+  simplePositions: number;     // Celdas simples (1 pallet)
+  doubleSlotsCount: number;    // Celdas dobles (>= 2 pallets)
+  doublePositions: number;     // Posiciones aportadas por dobles (doubleSlotsCount * 2)
+  totalPositions: number;      // simplePositions + doublePositions
+  capacityPositions: number;
+  emptyPositions: number;
+  occupancyPct: number;
+  totalPhysicalSlots: number;
+}
+
 export interface ZoneOccupancyMetrics {
   zone: 'CONGELADO' | 'REFRIGERADO' | 'GLOBAL';
   racksCount: number;
@@ -24,6 +37,16 @@ export interface ZoneOccupancyMetrics {
   occupiedPositions: number;
   emptyPositions: number;
   occupancyPct: number;
+  simplePositions: number;
+  doubleSlotsCount: number;
+  doublePositions: number;
+  totalPositions: number;
+  breakdownByTipo?: {
+    CGO?: TipoAlmacenBreakdown;
+    PBK?: TipoAlmacenBreakdown;
+    PFW?: TipoAlmacenBreakdown;
+    RCK?: TipoAlmacenBreakdown;
+  };
 }
 
 export interface WarehouseOccupancySummary {
@@ -31,6 +54,16 @@ export interface WarehouseOccupancySummary {
   refrigerado: ZoneOccupancyMetrics;
   global: ZoneOccupancyMetrics;
   racks: RackOccupancyMetrics[];
+}
+
+/**
+ * Mapeo determinístico de Tipo de Almacén SAP según rack y nivel.
+ */
+export function getSlotTipoAlmacen(rackId: number, nivel: number): 'CGO' | 'PBK' | 'PFW' | 'RCK' {
+  if (rackId <= 8) return 'CGO';
+  if (rackId >= 17 && rackId <= 19) return 'PFW';
+  if (rackId === 28) return nivel <= 3 ? 'PBK' : 'RCK';
+  return 'PBK';
 }
 
 export interface OccupancyHistoryPoint {
@@ -142,6 +175,56 @@ export function calculateWarehouseOccupancy(
   const gOccupied = cOccupied + rOccupied;
   const gPct = gCapacity > 0 ? Math.round((gOccupied / gCapacity) * 1000) / 10 : 0;
 
+  // Calcular desglose exacto por tipo de almacén (CGO, PBK, PFW, RCK)
+  const tipoNames: Record<'CGO' | 'PBK' | 'PFW' | 'RCK', string> = {
+    CGO: 'CGO - Cámara Congelado',
+    PBK: 'PBK - Picking / Buffer Refrigerado',
+    PFW: 'PFW - Pasillo Frontal Refrigerado',
+    RCK: 'RCK - Rack Altura Refrigerado',
+  };
+
+  const tipoData: Record<'CGO' | 'PBK' | 'PFW' | 'RCK', TipoAlmacenBreakdown> = {
+    CGO: { tipo: 'CGO', name: tipoNames.CGO, simplePositions: 0, doubleSlotsCount: 0, doublePositions: 0, totalPositions: 0, capacityPositions: 0, emptyPositions: 0, totalPhysicalSlots: 0, occupancyPct: 0 },
+    PBK: { tipo: 'PBK', name: tipoNames.PBK, simplePositions: 0, doubleSlotsCount: 0, doublePositions: 0, totalPositions: 0, capacityPositions: 0, emptyPositions: 0, totalPhysicalSlots: 0, occupancyPct: 0 },
+    PFW: { tipo: 'PFW', name: tipoNames.PFW, simplePositions: 0, doubleSlotsCount: 0, doublePositions: 0, totalPositions: 0, capacityPositions: 0, emptyPositions: 0, totalPhysicalSlots: 0, occupancyPct: 0 },
+    RCK: { tipo: 'RCK', name: tipoNames.RCK, simplePositions: 0, doubleSlotsCount: 0, doublePositions: 0, totalPositions: 0, capacityPositions: 0, emptyPositions: 0, totalPhysicalSlots: 0, occupancyPct: 0 },
+  };
+
+  for (const r of rackMetrics) {
+    for (const mod of r.rack.modules) {
+      for (let lvl = 1; lvl <= 6; lvl++) {
+        const ubi = `${mod}${String(lvl).padStart(2, '0')}`;
+        const tipo = getSlotTipoAlmacen(r.rack.id, lvl);
+        const slotCapacity = r.isDoubleRack ? 2 : 1;
+        const td = tipoData[tipo];
+        td.totalPhysicalSlots++;
+        td.capacityPositions += slotCapacity;
+
+        const items = stockIndex.get(ubi) || [];
+        if (items.length === 0) {
+          td.emptyPositions += slotCapacity;
+        } else if (items.length === 1) {
+          td.simplePositions += 1;
+          td.totalPositions += 1;
+          if (slotCapacity === 2) td.emptyPositions += 1;
+        } else {
+          td.doubleSlotsCount += 1;
+          td.doublePositions += 2;
+          td.totalPositions += 2;
+        }
+      }
+    }
+  }
+
+  for (const td of Object.values(tipoData)) {
+    td.occupancyPct = td.capacityPositions > 0 ? Math.round((td.totalPositions / td.capacityPositions) * 1000) / 10 : 0;
+  }
+
+  const refSimple = tipoData.PBK.simplePositions + tipoData.PFW.simplePositions + tipoData.RCK.simplePositions;
+  const refDoubleSlots = tipoData.PBK.doubleSlotsCount + tipoData.PFW.doubleSlotsCount + tipoData.RCK.doubleSlotsCount;
+  const refDoublePos = tipoData.PBK.doublePositions + tipoData.PFW.doublePositions + tipoData.RCK.doublePositions;
+  const refTotal = tipoData.PBK.totalPositions + tipoData.PFW.totalPositions + tipoData.RCK.totalPositions;
+
   const congelado: ZoneOccupancyMetrics = {
     zone: 'CONGELADO',
     racksCount: congeladoRacks.length,
@@ -151,6 +234,13 @@ export function calculateWarehouseOccupancy(
     occupiedPositions: cOccupied,
     emptyPositions: Math.max(0, cCapacity - cOccupied),
     occupancyPct: cPct,
+    simplePositions: tipoData.CGO.simplePositions,
+    doubleSlotsCount: tipoData.CGO.doubleSlotsCount,
+    doublePositions: tipoData.CGO.doublePositions,
+    totalPositions: tipoData.CGO.totalPositions,
+    breakdownByTipo: {
+      CGO: tipoData.CGO,
+    },
   };
 
   const refrigerado: ZoneOccupancyMetrics = {
@@ -162,6 +252,15 @@ export function calculateWarehouseOccupancy(
     occupiedPositions: rOccupied,
     emptyPositions: Math.max(0, rCapacity - rOccupied),
     occupancyPct: rPct,
+    simplePositions: refSimple,
+    doubleSlotsCount: refDoubleSlots,
+    doublePositions: refDoublePos,
+    totalPositions: refTotal,
+    breakdownByTipo: {
+      PBK: tipoData.PBK,
+      PFW: tipoData.PFW,
+      RCK: tipoData.RCK,
+    },
   };
 
   const global: ZoneOccupancyMetrics = {
@@ -173,6 +272,11 @@ export function calculateWarehouseOccupancy(
     occupiedPositions: gOccupied,
     emptyPositions: Math.max(0, gCapacity - gOccupied),
     occupancyPct: gPct,
+    simplePositions: tipoData.CGO.simplePositions + refSimple,
+    doubleSlotsCount: tipoData.CGO.doubleSlotsCount + refDoubleSlots,
+    doublePositions: tipoData.CGO.doublePositions + refDoublePos,
+    totalPositions: tipoData.CGO.totalPositions + refTotal,
+    breakdownByTipo: tipoData,
   };
 
   return {
