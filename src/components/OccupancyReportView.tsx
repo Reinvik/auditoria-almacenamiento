@@ -503,7 +503,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                   {/* PBK */}
                   <div className="bg-white/90 p-1.5 rounded-lg border border-emerald-100/80 text-[11px] space-y-0.5">
                     <div className="flex justify-between items-center font-black">
-                      <span className="text-emerald-900 font-black">PBK (Picking / Buffer)</span>
+                      <span className="text-emerald-900 font-black">PBK (Push Back)</span>
                       <span className="text-emerald-700 font-black">{formatPct(excelSummary.rows[1].pctOcupacion)}</span>
                     </div>
                     <div className="flex justify-between text-[10px] text-slate-600 font-medium">
@@ -516,7 +516,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                   {/* PFW */}
                   <div className="bg-white/90 p-1.5 rounded-lg border border-emerald-100/80 text-[11px] space-y-0.5">
                     <div className="flex justify-between items-center font-black">
-                      <span className="text-amber-900 font-black">PFW (Pasillo Frontal / R17-19)</span>
+                      <span className="text-amber-900 font-black">PFW (Post Forward / R17-19)</span>
                       <span className="text-amber-700 font-black">{formatPct(excelSummary.rows[2].pctOcupacion)}</span>
                     </div>
                     <div className="flex justify-between text-[10px] text-slate-600 font-medium">
@@ -529,7 +529,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                   {/* RCK */}
                   <div className="bg-white/90 p-1.5 rounded-lg border border-emerald-100/80 text-[11px] space-y-0.5">
                     <div className="flex justify-between items-center font-black">
-                      <span className="text-indigo-900 font-black">RCK (Rack Altura / R28)</span>
+                      <span className="text-indigo-900 font-black">RCK (Producto Crítico / R28)</span>
                       <span className="text-indigo-700 font-black">{formatPct(excelSummary.rows[3].pctOcupacion)}</span>
                     </div>
                     <div className="flex justify-between text-[10px] text-slate-600 font-medium">
@@ -592,7 +592,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                       {currentSummary.refrigerado.breakdownByTipo.PBK && (
                         <div className="bg-white/90 p-1.5 rounded-lg border border-emerald-100/80 text-[11px] space-y-0.5">
                           <div className="flex justify-between items-center font-black">
-                            <span className="text-emerald-900 font-black text-[11px]">PBK (Picking / Buffer)</span>
+                            <span className="text-emerald-900 font-black text-[11px]">PBK (Push Back)</span>
                             <span className="text-emerald-800 font-black">{currentSummary.refrigerado.breakdownByTipo.PBK.totalPositions.toLocaleString()} pos</span>
                           </div>
                           <div className="flex justify-between text-[10px] text-slate-600 font-medium">
@@ -607,7 +607,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                       {currentSummary.refrigerado.breakdownByTipo.PFW && (
                         <div className="bg-white/90 p-1.5 rounded-lg border border-emerald-100/80 text-[11px] space-y-0.5">
                           <div className="flex justify-between items-center font-black">
-                            <span className="text-amber-900 font-black text-[11px]">PFW (Pasillo Frontal / R17-19)</span>
+                            <span className="text-amber-900 font-black text-[11px]">PFW (Post Forward / R17-19)</span>
                             <span className="text-amber-800 font-black">{currentSummary.refrigerado.breakdownByTipo.PFW.totalPositions.toLocaleString()} pos</span>
                           </div>
                           <div className="flex justify-between text-[10px] text-slate-600 font-medium">
@@ -622,7 +622,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                       {currentSummary.refrigerado.breakdownByTipo.RCK && (
                         <div className="bg-white/90 p-1.5 rounded-lg border border-emerald-100/80 text-[11px] space-y-0.5">
                           <div className="flex justify-between items-center font-black">
-                            <span className="text-indigo-900 font-black text-[11px]">RCK (Rack Altura / R28 N4-N6)</span>
+                            <span className="text-indigo-900 font-black text-[11px]">RCK (Producto Crítico / R28 N4-N6)</span>
                             <span className="text-indigo-800 font-black">{currentSummary.refrigerado.breakdownByTipo.RCK.totalPositions.toLocaleString()} pos</span>
                           </div>
                           <div className="flex justify-between text-[10px] text-slate-600 font-medium">

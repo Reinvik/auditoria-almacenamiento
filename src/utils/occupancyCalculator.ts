@@ -126,9 +126,10 @@ export interface ExcelOccupancySummary {
 
 export const EXCEL_MASTER_CAPACITIES = {
   CGO: { total: 1024, name: 'CGO - Cámara Congelado' },
-  PBK: { total: 2881, name: 'PBK - Picking / Buffer Refrigerado' },
-  PFW: { total: 682,  name: 'PFW - Pasillo Frontal Refrigerado' },
-  RCK: { total: 506,  name: 'RCK - Rack Altura Refrigerado' },
+  PBK: { total: 2881, name: 'PBK - Push Back' },
+  PFW: { total: 682,  name: 'PFW - Post Forward' },
+  RCK: { total: 506,  name: 'RCK - Producto Crítico' },
+  MNL: { total: 0,    name: 'MNL - Multi Nivel' },
 } as const;
 
 export const LOCAL_STORAGE_OCCUPANCY_HISTORY_KEY = 'auditoria_almacenamiento_occupancy_history_v1';
@@ -231,9 +232,9 @@ export function calculateWarehouseOccupancy(
   // Calcular desglose exacto por tipo de almacén (CGO, PBK, PFW, RCK)
   const tipoNames: Record<'CGO' | 'PBK' | 'PFW' | 'RCK', string> = {
     CGO: 'CGO - Cámara Congelado',
-    PBK: 'PBK - Picking / Buffer Refrigerado',
-    PFW: 'PFW - Pasillo Frontal Refrigerado',
-    RCK: 'RCK - Rack Altura Refrigerado',
+    PBK: 'PBK - Push Back',
+    PFW: 'PFW - Post Forward',
+    RCK: 'RCK - Producto Crítico',
   };
 
   const tipoData: Record<'CGO' | 'PBK' | 'PFW' | 'RCK', TipoAlmacenBreakdown> = {
@@ -467,7 +468,7 @@ export function calculateExcelPivotSummary(
 
   const rowPBK: ExcelPivotRow = {
     tipo: 'PBK',
-    nombre: 'PBK - Picking / Buffer Refrigerado',
+    nombre: 'PBK - Push Back',
     simplesVacias: pbkSimples,
     doblesVacias: pbkDobles,
     triplesVacias: 0,
@@ -479,7 +480,7 @@ export function calculateExcelPivotSummary(
 
   const rowPFW: ExcelPivotRow = {
     tipo: 'PFW',
-    nombre: 'PFW - Pasillo Frontal Refrigerado',
+    nombre: 'PFW - Post Forward',
     simplesVacias: pfwSimples,
     doblesVacias: pfwDobles,
     triplesVacias: 0,
@@ -491,7 +492,7 @@ export function calculateExcelPivotSummary(
 
   const rowRCK: ExcelPivotRow = {
     tipo: 'RCK',
-    nombre: 'RCK - Rack Altura Refrigerado',
+    nombre: 'RCK - Producto Crítico',
     simplesVacias: rckSimples,
     doblesVacias: rckDobles,
     triplesVacias: 0,
