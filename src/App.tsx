@@ -34,9 +34,18 @@ import {
   CheckCircle2,
   X
 } from 'lucide-react';
+import { 
+  fetchAuditFindingsFromSupabase, 
+  saveAuditFindingToSupabase, 
+  deleteAuditFindingFromSupabase, 
+  clearAllAuditFindingsFromSupabase, 
+  fetchWarehouseStateFromSupabase, 
+  saveWarehouseStateToSupabase, 
+  subscribeToRealtimeChanges 
+} from './services/supabaseService';
 
-const LOCAL_STORAGE_STOCK_KEY = 'auditoria_almacenamiento_stock_v2';
-const LOCAL_STORAGE_AUDIT_KEY = 'auditoria_almacenamiento_audit_v1';
+const LOCAL_STORAGE_STOCK_KEY = 'auditoria_almacenamiento_stock_v3';
+const LOCAL_STORAGE_AUDIT_KEY = 'auditoria_almacenamiento_audit_v2';
 const LOCAL_STORAGE_ZONE_KEY = 'auditoria_almacenamiento_zone_v1';
 const LOCAL_STORAGE_AUDITOR_ID_KEY = 'auditoria_almacenamiento_my_auditor_id';
 const LOCAL_STORAGE_WORKLOAD_KEY = 'auditoria_almacenamiento_workload_v3';
@@ -88,6 +97,77 @@ export default function App() {
       console.warn('Error saving audit findings', e);
     }
   }, [auditFindings]);
+
+  // Estado de sincronización en la nube (Supabase)
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'error'>('synced');
+
+  // Cargar datos persistidos y sincronizar en tiempo real entre múltiples dispositivos
+  useEffect(() => {
+    let isMounted = true;
+    async function initCloudSync() {
+      setSyncStatus('syncing');
+      try {
+        const [cloudFindings, cloudState] = await Promise.all([
+          fetchAuditFindingsFromSupabase(),
+          fetchWarehouseStateFromSupabase(),
+        ]);
+
+        if (!isMounted) return;
+
+        // Combinar hallazgos de Supabase con el estado local
+        if (cloudFindings.size > 0) {
+          setAuditFindings(prev => {
+            const merged = new Map(prev);
+            for (const [k, v] of cloudFindings) {
+              merged.set(k, v);
+            }
+            return merged;
+          });
+        }
+
+        // Si hay stock en la nube compartido y local está vacío o desactualizado
+        if (cloudState?.stockData && cloudState.stockData.length > 0) {
+          setStockData(cloudState.stockData);
+        }
+
+        setSyncStatus('synced');
+      } catch (err) {
+        console.warn('Error en conexión inicial con Supabase:', err);
+        setSyncStatus('offline');
+      }
+    }
+
+    initCloudSync();
+
+    // Suscripción Realtime para reflejar auditorías instantáneamente entre tablet, teléfono y PC
+    const unsubscribe = subscribeToRealtimeChanges(
+      (finding) => {
+        setAuditFindings(prev => {
+          const next = new Map(prev);
+          next.set(finding.ubicacion, finding);
+          return next;
+        });
+        setSyncStatus('synced');
+      },
+      (ubicacion) => {
+        setAuditFindings(prev => {
+          const next = new Map(prev);
+          next.delete(ubicacion);
+          return next;
+        });
+        setSyncStatus('synced');
+      },
+      (newStock) => {
+        setStockData(newStock);
+        setSyncStatus('synced');
+      }
+    );
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, []);
 
   // 3. Navigation & Views (Default to Rack 8 as requested)
   const [selectedRackId, setSelectedRackId] = useState<number>(8);
@@ -319,11 +399,20 @@ export default function App() {
 
   // Handlers
   const handleSaveAuditFinding = (finding: AuditFinding) => {
+    // 1. Guardar localmente
     setAuditFindings(prev => {
       const next = new Map(prev);
       next.set(finding.ubicacion, finding);
       return next;
     });
+
+    // 2. Sincronizar con Supabase en segundo plano
+    setSyncStatus('syncing');
+    saveAuditFindingToSupabase(finding)
+      .then(ok => {
+        setSyncStatus(ok ? 'synced' : 'offline');
+      })
+      .catch(() => setSyncStatus('offline'));
   };
 
   const handleClearAuditFinding = (ubicacion: string) => {
@@ -332,20 +421,45 @@ export default function App() {
       next.delete(ubicacion);
       return next;
     });
+
+    setSyncStatus('syncing');
+    deleteAuditFindingFromSupabase(ubicacion)
+      .then(ok => {
+        setSyncStatus(ok ? 'synced' : 'offline');
+      })
+      .catch(() => setSyncStatus('offline'));
   };
 
   const handleClearAllAudit = () => {
-    if (window.confirm('¿Deseas reiniciar y borrar todas las verificaciones de auditoría tomadas?')) {
+    if (window.confirm('¿Deseas reiniciar y borrar todas las verificaciones de auditoría tomadas? Esto se sincronizará en todos los dispositivos.')) {
       setAuditFindings(new Map());
+      setSyncStatus('syncing');
+      clearAllAuditFindingsFromSupabase()
+        .then(ok => {
+          setSyncStatus(ok ? 'synced' : 'offline');
+        })
+        .catch(() => setSyncStatus('offline'));
     }
   };
 
   const handleImportStock = (newItems: StockItem[]) => {
     setStockData(newItems);
+    setSyncStatus('syncing');
+    saveWarehouseStateToSupabase(newItems, 'Inventario Actual')
+      .then(ok => {
+        setSyncStatus(ok ? 'synced' : 'offline');
+      })
+      .catch(() => setSyncStatus('offline'));
   };
 
   const handleRestoreDefaultStock = () => {
     setStockData(INITIAL_STOCK_DATA);
+    setSyncStatus('syncing');
+    saveWarehouseStateToSupabase(INITIAL_STOCK_DATA, 'Base Inicial San Jorge')
+      .then(ok => {
+        setSyncStatus(ok ? 'synced' : 'offline');
+      })
+      .catch(() => setSyncStatus('offline'));
   };
 
   // Cálculo de resultados de búsqueda global en todo el inventario
@@ -393,6 +507,7 @@ export default function App() {
         onOpenWorkload={() => setIsWorkloadOpen(true)}
         onOpenOccupancy={() => setViewMode('occupancy_report')}
         activeAuditorName={currentAuditorAssignment?.name}
+        syncStatus={syncStatus}
       />
 
       {/* Rack Selector & View Mode Switcher */}

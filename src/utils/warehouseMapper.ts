@@ -45,7 +45,7 @@ export function generateRackSlots(
       }
 
       const hasTransfer = items.some(
-        it => it.stockDisponible === 0 || it.valVista === 'TRANSFER'
+        it => it.valVista === 'TRANSFER' || it.valVista === 'BLOQUEADO' || (it.stockDisponible === 0 && it.unidad !== 'PAL')
       );
 
       const totalStock = items.reduce((acc, it) => acc + (it.stockDisponible || 0), 0);

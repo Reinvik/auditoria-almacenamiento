@@ -9,7 +9,9 @@ import {
   Scale,
   TrendingUp,
   MapPin,
-  ExternalLink
+  ExternalLink,
+  Cloud,
+  RefreshCw
 } from 'lucide-react';
 import cialLogo from '../assets/cial-alimentos-logo.png';
 import { WarehouseSearchResult } from '../utils/warehouseSearch';
@@ -34,6 +36,7 @@ interface NavbarProps {
   onOpenWorkload: () => void;
   onOpenOccupancy?: () => void;
   activeAuditorName?: string | null;
+  syncStatus?: 'synced' | 'syncing' | 'offline' | 'error';
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -55,6 +58,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenWorkload,
   onOpenOccupancy,
   activeAuditorName,
+  syncStatus = 'synced',
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
@@ -91,9 +95,30 @@ export const Navbar: React.FC<NavbarProps> = ({
                   SAN JORGE
                 </span>
               </div>
-              <span className="text-[10px] sm:text-[10.5px] text-emerald-200 font-bold tracking-widest uppercase mt-0.5 block">
-                Control de Altura y Pasillos — CD San Jorge
-              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-[10px] sm:text-[10.5px] text-emerald-200 font-bold tracking-widest uppercase block">
+                  Control de Altura y Pasillos — CD San Jorge
+                </span>
+                {syncStatus === 'synced' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.2 rounded-full text-[9.5px] font-black bg-emerald-950/70 text-emerald-300 border border-emerald-400/30 shadow-xs" title="Sincronización multi-dispositivo activa en tiempo real">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <Cloud className="w-3 h-3 text-emerald-300" />
+                    <span className="hidden sm:inline">Nube en vivo</span>
+                  </span>
+                )}
+                {syncStatus === 'syncing' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.2 rounded-full text-[9.5px] font-black bg-sky-950/70 text-sky-300 border border-sky-400/40 shadow-xs" title="Sincronizando cambios con Supabase...">
+                    <RefreshCw className="w-3 h-3 text-sky-300 animate-spin" />
+                    <span>Sincronizando...</span>
+                  </span>
+                )}
+                {syncStatus === 'offline' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.2 rounded-full text-[9.5px] font-black bg-amber-950/70 text-amber-300 border border-amber-400/40 shadow-xs" title="Modo local (sin conexión)">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                    <span>Modo local</span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 

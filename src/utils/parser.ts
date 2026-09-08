@@ -52,12 +52,15 @@ export function parsePastedData(text: string): StockItem[] {
   const colIndex: { [key: string]: number } = {
     material: normHeaders.findIndex(h => h.includes('material') || h === 'codigo' || h === 'cod'),
     centro: normHeaders.findIndex(h => h.includes('centro') || h === 'ce'),
-    almacen: normHeaders.findIndex(h => h.includes('almacen') || h === 'alm'),
+    almacen: normHeaders.findIndex(h => (h.includes('almacen') && !h.includes('tipo')) || h === 'alm'),
     lote: normHeaders.findIndex(h => h.includes('lote')),
     descripcion: normHeaders.findIndex(h => h.includes('descrip') || h.includes('texto')),
     tipoAlmacen: normHeaders.findIndex(h => h.includes('tipoalm') || h.includes('tipo')),
     ubicacion: normHeaders.findIndex(h => h.includes('ubicaci') || h === 'ubi'),
-    stock: normHeaders.findIndex(h => h.includes('stockdispon') || h.includes('stock') || h.includes('cantidad') || h.includes('cant')),
+    stock: normHeaders.findIndex(h => (h.includes('stockdispon') || h === 'stock' || h.includes('cantdispon') || h === 'cantidad') && !h.includes('diferenciacion') && !h.includes('especial')),
+    valVista: normHeaders.findIndex(h => h.includes('valvista') || h === 'vista'),
+    diferenciacion: normHeaders.findIndex(h => h.includes('diferenciacion') || h === 'difstock'),
+    bloqueo: normHeaders.findIndex(h => h.includes('motivobloqueo') || h === 'bloqueodesalidas'),
     unidad: normHeaders.findIndex(h => h.includes('unidad') || h.includes('umb') || h === 'un'),
     fecha: normHeaders.findIndex(h => h.includes('caduc') || h.includes('fecaduc') || h.includes('fecha') || h.includes('fpc')),
     peso: normHeaders.findIndex(h => h.includes('peso') || h.includes('kg')),
@@ -85,6 +88,8 @@ export function parsePastedData(text: string): StockItem[] {
     let unidad = 'UN';
     let fechaCaducidad = '';
     let peso = 0;
+    let diferenciacionStock = '';
+    let valVista = 'OK';
 
     if (hasHeaderRow) {
       ubicacion = colIndex.ubicacion !== -1 ? parts[colIndex.ubicacion] || '' : '';
@@ -98,6 +103,7 @@ export function parsePastedData(text: string): StockItem[] {
       unidad = colIndex.unidad !== -1 ? parts[colIndex.unidad] || 'UN' : 'UN';
       fechaCaducidad = colIndex.fecha !== -1 ? parts[colIndex.fecha] || '' : '';
       peso = colIndex.peso !== -1 ? parseNumber(parts[colIndex.peso]) : 0;
+      diferenciacionStock = colIndex.diferenciacion !== -1 ? parts[colIndex.diferenciacion] || '' : '';
 
       // Descartar ubicaciones marcadas explícitamente como vacías
       const isIndVacia = colIndex.indVacia !== -1 && (parts[colIndex.indVacia] === 'X' || parts[colIndex.indVacia]?.toLowerCase() === 'x');
@@ -112,6 +118,21 @@ export function parsePastedData(text: string): StockItem[] {
         stock = 1;
         unidad = 'PAL';
       }
+
+      // Determinar valVista (TRANSFER / BLOQUEADO vs OK)
+      const rawValVista = colIndex.valVista !== -1 ? (parts[colIndex.valVista] || '').trim().toUpperCase() : '';
+      const rawDif = diferenciacionStock.trim().toUpperCase();
+      const rawBloq = colIndex.bloqueo !== -1 ? (parts[colIndex.bloqueo] || '').trim().toUpperCase() : '';
+
+      if (rawValVista === 'TRANSFER' || rawValVista === 'BLOQUEADO') {
+        valVista = 'TRANSFER';
+      } else if (rawDif === 'S' || (rawBloq !== '' && rawBloq !== 'OK')) {
+        valVista = 'TRANSFER';
+      } else if (colIndex.stock !== -1 && stock === 0 && material.trim() !== '') {
+        valVista = 'TRANSFER';
+      } else {
+        valVista = 'OK';
+      }
     } else {
       // Intentar auto-detección por posición común de SAP (Material=0, Centro=1, Almacen=2, Lote=4, Desc=6, Tipo=7, Ubic=8, Stock=9, UMB=10, Fecha=11, Peso=12)
       material = parts[0] || '';
@@ -125,6 +146,7 @@ export function parsePastedData(text: string): StockItem[] {
       unidad = parts[10] || 'UN';
       fechaCaducidad = parts[11] || '';
       peso = parseNumber(parts[12]);
+      valVista = stock === 0 ? 'TRANSFER' : 'OK';
     }
 
     // Limpiar ubicación (remover espacios y sufijos de pallets como /1, /2)
@@ -141,6 +163,7 @@ export function parsePastedData(text: string): StockItem[] {
         material: matCode,
         centro,
         almacen,
+        diferenciacionStock,
         lote,
         descripcion: descripcion || `MATERIAL ${matCode}`,
         tipoAlmacen,
@@ -149,7 +172,7 @@ export function parsePastedData(text: string): StockItem[] {
         unidad,
         fechaCaducidad,
         peso,
-        valVista: stock === 0 ? 'TRANSFER' : 'OK'
+        valVista
       });
     }
   }
