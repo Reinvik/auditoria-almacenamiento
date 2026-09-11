@@ -32,6 +32,8 @@ import {
   Scale,
   Users,
   CheckCircle2,
+  AlertCircle,
+  RefreshCw,
   X
 } from 'lucide-react';
 import { 
@@ -41,7 +43,9 @@ import {
   clearAllAuditFindingsFromSupabase, 
   fetchWarehouseStateFromSupabase, 
   saveWarehouseStateToSupabase, 
-  subscribeToRealtimeChanges 
+  subscribeToRealtimeChanges,
+  syncRackWithCloud,
+  syncAisleWithCloud
 } from './services/supabaseService';
 
 const LOCAL_STORAGE_STOCK_KEY = 'auditoria_almacenamiento_stock_v3';
@@ -176,6 +180,21 @@ export default function App() {
   const [filterType, setFilterType] = useState<FilterType>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [auditMode, setAuditMode] = useState<boolean>(false);
+
+  // Sincronización individual por rack y por pasillo
+  const [isSyncingRack, setIsSyncingRack] = useState<boolean>(false);
+  const [isSyncingAisle, setIsSyncingAisle] = useState<boolean>(false);
+  const [rackSyncTimes, setRackSyncTimes] = useState<Map<number, string>>(new Map());
+  const [syncToast, setSyncToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+
+  // Auto-cerrar toast tras 4.5 segundos
+  useEffect(() => {
+    if (!syncToast) return;
+    const timer = setTimeout(() => {
+      setSyncToast(null);
+    }, 4500);
+    return () => clearTimeout(timer);
+  }, [syncToast]);
 
   // 4. Zonificación y Reparto de Auditores
   const [activeZone, setActiveZone] = useState<WarehouseZone>(() => {
@@ -397,6 +416,121 @@ export default function App() {
     return count;
   }, [auditFindings]);
 
+  // Discrepancias del rack actual seleccionado
+  const currentRackDiscrepanciesCount = useMemo(() => {
+    let count = 0;
+    for (const f of auditFindings.values()) {
+      const rackIdFromSlot = f.rackId || parseInt(f.ubicacion.slice(0, 3), 10);
+      if (rackIdFromSlot === selectedRackId && f.discrepancyType !== 'NONE') {
+        count++;
+      }
+    }
+    return count;
+  }, [auditFindings, selectedRackId]);
+
+  // Sincronización individual de un rack específico (aislado para no pisar otros racks)
+  const handleSyncRack = async (rackId: number) => {
+    setIsSyncingRack(true);
+    try {
+      const localForRack = Array.from(auditFindings.values()).filter(
+        f => (f.rackId || parseInt(f.ubicacion.slice(0, 3), 10)) === rackId
+      );
+      const result = await syncRackWithCloud(rackId, localForRack);
+
+      if (result.success) {
+        setAuditFindings(prev => {
+          const next = new Map(prev);
+          // Eliminar únicamente las discrepancias locales del rack seleccionado
+          for (const [k, v] of prev.entries()) {
+            const vRackId = v.rackId || parseInt(v.ubicacion.slice(0, 3), 10);
+            if (vRackId === rackId) {
+              next.delete(k);
+            }
+          }
+          // Agregar los hallazgos descargados de Supabase para este rack
+          for (const [k, v] of result.cloudFindings.entries()) {
+            next.set(k, v);
+          }
+          return next;
+        });
+
+        const nowStr = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+        setRackSyncTimes(prev => new Map(prev).set(rackId, nowStr));
+        const diffs = Array.from(result.cloudFindings.values()).filter(f => f.discrepancyType !== 'NONE').length;
+        setSyncToast({
+          message: `Rack ${rackId} sincronizado (${nowStr}). ${result.count} celdas verificadas con ${diffs} diferencia(s).`,
+          type: 'success'
+        });
+      } else {
+        setSyncToast({
+          message: `No se pudo sincronizar Rack ${rackId}: ${result.error || 'Error de red'}`,
+          type: 'error'
+        });
+      }
+    } catch (err: any) {
+      setSyncToast({
+        message: `Error al sincronizar Rack ${rackId}: ${err?.message || 'Error desconocido'}`,
+        type: 'error'
+      });
+    } finally {
+      setIsSyncingRack(false);
+    }
+  };
+
+  // Sincronización individual de un pasillo completo
+  const handleSyncAisle = async (aisleId: number) => {
+    const aisle = DEFAULT_AISLES.find(a => a.id === aisleId);
+    if (!aisle) return;
+    const rackIds = [aisle.leftRackId, aisle.rightRackId];
+    setIsSyncingAisle(true);
+    try {
+      const localForAisle = Array.from(auditFindings.values()).filter(
+        f => rackIds.includes(f.rackId || parseInt(f.ubicacion.slice(0, 3), 10))
+      );
+      const result = await syncAisleWithCloud(rackIds, localForAisle);
+
+      if (result.success) {
+        setAuditFindings(prev => {
+          const next = new Map(prev);
+          for (const [k, v] of prev.entries()) {
+            const vRackId = v.rackId || parseInt(v.ubicacion.slice(0, 3), 10);
+            if (rackIds.includes(vRackId)) {
+              next.delete(k);
+            }
+          }
+          for (const [k, v] of result.cloudFindings.entries()) {
+            next.set(k, v);
+          }
+          return next;
+        });
+
+        const nowStr = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+        setRackSyncTimes(prev => {
+          const next = new Map(prev);
+          rackIds.forEach(id => next.set(id, nowStr));
+          return next;
+        });
+        const diffs = Array.from(result.cloudFindings.values()).filter(f => f.discrepancyType !== 'NONE').length;
+        setSyncToast({
+          message: `${aisle.name} sincronizado (${nowStr}). ${result.count} celdas verificadas con ${diffs} diferencia(s).`,
+          type: 'success'
+        });
+      } else {
+        setSyncToast({
+          message: `No se pudo sincronizar ${aisle.name}: ${result.error || 'Error de red'}`,
+          type: 'error'
+        });
+      }
+    } catch (err: any) {
+      setSyncToast({
+        message: `Error al sincronizar ${aisle.name}: ${err?.message || 'Error desconocido'}`,
+        type: 'error'
+      });
+    } finally {
+      setIsSyncingAisle(false);
+    }
+  };
+
   // Handlers
   const handleSaveAuditFinding = (finding: AuditFinding) => {
     // 1. Guardar localmente
@@ -532,6 +666,10 @@ export default function App() {
         searchQuery={searchQuery}
         searchRackCounts={searchResult.rackCounts}
         matchedRackIds={searchResult.matchedRackIds}
+        onSyncCurrentRack={handleSyncRack}
+        isSyncingRack={isSyncingRack}
+        rackSyncTimes={rackSyncTimes}
+        rackDiscrepanciesCount={currentRackDiscrepanciesCount}
       />
 
       {/* Personal Auditor Progress Banner */}
@@ -620,6 +758,9 @@ export default function App() {
             auditFindings={auditFindings}
             searchQuery={searchQuery}
             onSlotClick={setSelectedSlot}
+            onSyncAisle={handleSyncAisle}
+            isSyncingAisle={isSyncingAisle}
+            lastSyncTime={rackSyncTimes.get(DEFAULT_AISLES.find(a => a.id === selectedAisleId)?.leftRackId || 0)}
           />
         ) : (
           <RackGridView
@@ -631,6 +772,10 @@ export default function App() {
             auditFindings={auditFindings}
             auditMode={auditMode}
             onSlotClick={setSelectedSlot}
+            onSyncRack={handleSyncRack}
+            isSyncingRack={isSyncingRack}
+            lastSyncTime={rackSyncTimes.get(selectedRackId)}
+            rackDiscrepanciesCount={currentRackDiscrepanciesCount}
           />
         )}
       </main>
@@ -791,6 +936,35 @@ export default function App() {
         auditFindings={auditFindings}
         onClearAllAudit={handleClearAllAudit}
       />
+
+      {/* Floating Sync Toast Notification */}
+      {syncToast && (
+        <aside
+          role="status"
+          aria-live="polite"
+          className={`fixed bottom-16 sm:bottom-6 right-4 sm:right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl border text-xs font-bold animate-in fade-in slide-in-from-bottom-5 duration-200 max-w-[90vw] sm:max-w-md ${
+            syncToast.type === 'error'
+              ? 'bg-rose-950 text-rose-100 border-rose-700 shadow-rose-950/50'
+              : 'bg-emerald-950 text-emerald-100 border-emerald-700 shadow-emerald-950/50'
+          }`}
+        >
+          {syncToast.type === 'error' ? (
+            <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+          ) : (
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          )}
+          <div className="flex-1 leading-snug">
+            {syncToast.message}
+          </div>
+          <button
+            onClick={() => setSyncToast(null)}
+            className="p-1 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer shrink-0"
+            title="Cerrar notificación"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </aside>
+      )}
     </div>
   );
 }

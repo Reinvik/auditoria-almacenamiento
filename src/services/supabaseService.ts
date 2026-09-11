@@ -1,4 +1,4 @@
-﻿import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { AuditFinding, StockItem } from '../types/warehouse';
 
 export interface AuditFindingRow {
@@ -20,6 +20,14 @@ export interface AuditFindingRow {
 }
 
 export function findingToRow(f: AuditFinding): AuditFindingRow {
+  let isoTimestamp = new Date().toISOString();
+  if (f.timestamp && f.timestamp.includes('T')) {
+    const parsed = new Date(f.timestamp);
+    if (!isNaN(parsed.getTime())) {
+      isoTimestamp = parsed.toISOString();
+    }
+  }
+
   return {
     ubicacion: f.ubicacion,
     rack_id: f.rackId,
@@ -34,11 +42,21 @@ export function findingToRow(f: AuditFinding): AuditFindingRow {
     discrepancy_type: f.discrepancyType,
     notes: f.notes || null,
     auditor_name: f.auditorName || null,
-    timestamp: f.timestamp || new Date().toISOString(),
+    timestamp: isoTimestamp,
   };
 }
 
 export function rowToFinding(r: AuditFindingRow): AuditFinding {
+  let displayTime = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+  if (r.timestamp) {
+    try {
+      const d = new Date(r.timestamp);
+      if (!isNaN(d.getTime())) {
+        displayTime = d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+      }
+    } catch {}
+  }
+
   return {
     ubicacion: r.ubicacion,
     rackId: r.rack_id,
@@ -52,7 +70,7 @@ export function rowToFinding(r: AuditFindingRow): AuditFinding {
     physicalLote: r.physical_lote || undefined,
     discrepancyType: (r.discrepancy_type as any) || 'NONE',
     notes: r.notes || undefined,
-    timestamp: r.timestamp,
+    timestamp: displayTime,
     auditorName: r.auditor_name || undefined,
   };
 }
@@ -82,6 +100,134 @@ export async function fetchAuditFindingsFromSupabase(): Promise<Map<string, Audi
     console.warn('Error de red al conectar con Supabase:', err);
   }
   return map;
+}
+
+/**
+ * Carga los hallazgos de auditoría registrados en Supabase para un Rack específico.
+ */
+export async function fetchAuditFindingsForRack(rackId: number): Promise<Map<string, AuditFinding>> {
+  const map = new Map<string, AuditFinding>();
+  try {
+    const { data, error } = await supabase
+      .from('altura_audit_findings')
+      .select('*')
+      .eq('rack_id', rackId)
+      .order('timestamp', { ascending: true });
+
+    if (error) {
+      console.warn(`Error al cargar hallazgos del Rack ${rackId}:`, error);
+      return map;
+    }
+
+    if (data) {
+      for (const row of data as AuditFindingRow[]) {
+        map.set(row.ubicacion, rowToFinding(row));
+      }
+    }
+  } catch (err) {
+    console.warn(`Error de red al conectar con Supabase para Rack ${rackId}:`, err);
+  }
+  return map;
+}
+
+/**
+ * Carga los hallazgos de auditoría registrados en Supabase para un Pasillo (múltiples racks enfrentados).
+ */
+export async function fetchAuditFindingsForAisle(aisleRackIds: number[]): Promise<Map<string, AuditFinding>> {
+  const map = new Map<string, AuditFinding>();
+  try {
+    const { data, error } = await supabase
+      .from('altura_audit_findings')
+      .select('*')
+      .in('rack_id', aisleRackIds)
+      .order('timestamp', { ascending: true });
+
+    if (error) {
+      console.warn(`Error al cargar hallazgos del pasillo:`, error);
+      return map;
+    }
+
+    if (data) {
+      for (const row of data as AuditFindingRow[]) {
+        map.set(row.ubicacion, rowToFinding(row));
+      }
+    }
+  } catch (err) {
+    console.warn(`Error de red al conectar con Supabase para pasillo:`, err);
+  }
+  return map;
+}
+
+/**
+ * Sincroniza un Rack individual con la nube de forma bidireccional:
+ * 1. Sube cualquier hallazgo local de ese rack que no se haya guardado.
+ * 2. Descarga todas las diferencias de ese rack desde Supabase.
+ */
+export async function syncRackWithCloud(
+  rackId: number,
+  localFindingsForRack: AuditFinding[]
+): Promise<{ success: boolean; cloudFindings: Map<string, AuditFinding>; count: number; error?: string }> {
+  try {
+    if (localFindingsForRack.length > 0) {
+      const rows = localFindingsForRack.map(findingToRow);
+      const { error: upsertError } = await supabase
+        .from('altura_audit_findings')
+        .upsert(rows);
+      if (upsertError) {
+        console.warn(`Aviso al subir hallazgos locales de Rack ${rackId}:`, upsertError);
+      }
+    }
+
+    const cloudMap = await fetchAuditFindingsForRack(rackId);
+    return {
+      success: true,
+      cloudFindings: cloudMap,
+      count: cloudMap.size,
+    };
+  } catch (err: any) {
+    console.error(`Error al sincronizar Rack ${rackId}:`, err);
+    return {
+      success: false,
+      cloudFindings: new Map(),
+      count: 0,
+      error: err?.message || 'Error de red al sincronizar con la nube',
+    };
+  }
+}
+
+/**
+ * Sincroniza un Pasillo completo con la nube de forma bidireccional.
+ */
+export async function syncAisleWithCloud(
+  aisleRackIds: number[],
+  localFindingsForAisle: AuditFinding[]
+): Promise<{ success: boolean; cloudFindings: Map<string, AuditFinding>; count: number; error?: string }> {
+  try {
+    if (localFindingsForAisle.length > 0) {
+      const rows = localFindingsForAisle.map(findingToRow);
+      const { error: upsertError } = await supabase
+        .from('altura_audit_findings')
+        .upsert(rows);
+      if (upsertError) {
+        console.warn(`Aviso al subir hallazgos de pasillo:`, upsertError);
+      }
+    }
+
+    const cloudMap = await fetchAuditFindingsForAisle(aisleRackIds);
+    return {
+      success: true,
+      cloudFindings: cloudMap,
+      count: cloudMap.size,
+    };
+  } catch (err: any) {
+    console.error(`Error al sincronizar pasillo:`, err);
+    return {
+      success: false,
+      cloudFindings: new Map(),
+      count: 0,
+      error: err?.message || 'Error de red al sincronizar con la nube',
+    };
+  }
 }
 
 /**

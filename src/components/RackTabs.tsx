@@ -12,7 +12,8 @@ import {
   Snowflake,
   Check,
   X,
-  TrendingUp
+  TrendingUp,
+  RefreshCw
 } from 'lucide-react';
 import { 
   RackConfig, 
@@ -51,6 +52,10 @@ interface RackTabsProps {
   searchQuery?: string;
   searchRackCounts?: Map<number, number>;
   matchedRackIds?: number[];
+  onSyncCurrentRack?: (rackId: number) => void;
+  isSyncingRack?: boolean;
+  rackSyncTimes?: Map<number, string>;
+  rackDiscrepanciesCount?: number;
 }
 
 
@@ -75,6 +80,10 @@ export const RackTabs: React.FC<RackTabsProps> = ({
   searchQuery,
   searchRackCounts,
   matchedRackIds,
+  onSyncCurrentRack,
+  isSyncingRack,
+  rackSyncTimes,
+  rackDiscrepanciesCount,
 }) => {
   const tabsContainerRef = useRef<HTMLDivElement>(null);
 
@@ -342,6 +351,34 @@ export const RackTabs: React.FC<RackTabsProps> = ({
                     <strong className="text-[#0a5c36] font-extrabold">{rackStats.occupiedSlots}</strong> ocupadas / <strong className="text-slate-900 font-extrabold">{rackStats.emptySlots}</strong> vacías ({rackStats.occupancyRate}%)
                   </span>
                 </div>
+
+                {/* Botón Sincronizar Rack Individual */}
+                {onSyncCurrentRack && (
+                  <button
+                    onClick={() => onSyncCurrentRack(selectedRackId)}
+                    disabled={isSyncingRack}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0a5c36] hover:bg-[#08482a] active:scale-95 text-white text-xs font-bold shadow-xs transition-all disabled:opacity-50 cursor-pointer"
+                    title={`Sincronizar Rack ${selectedRackId} con diferencias marcadas en terreno`}
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncingRack ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">
+                      {isSyncingRack ? `Sincronizando Rack ${selectedRackId}...` : `Sincronizar Rack ${selectedRackId}`}
+                    </span>
+                    <span className="sm:hidden">
+                      {isSyncingRack ? `Sincronizando...` : `Sinc. R${selectedRackId}`}
+                    </span>
+                    {rackDiscrepanciesCount !== undefined && rackDiscrepanciesCount > 0 && (
+                      <span className="bg-amber-400 text-slate-950 font-black text-[10px] px-1.5 py-0.2 rounded-full">
+                        {rackDiscrepanciesCount} dif
+                      </span>
+                    )}
+                    {rackSyncTimes?.has(selectedRackId) && (
+                      <span className="text-[10.5px] text-emerald-200 font-mono hidden md:inline">
+                        ({rackSyncTimes.get(selectedRackId)})
+                      </span>
+                    )}
+                  </button>
+                )}
               </div>
 
               {/* Right Group: View Switcher + Cell Filters */}

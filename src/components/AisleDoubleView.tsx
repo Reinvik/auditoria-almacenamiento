@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { RackConfig, SlotData, AuditFinding, AislePair } from '../types/warehouse';
-import { ArrowDown, SplitSquareVertical } from 'lucide-react';
+import { ArrowDown, SplitSquareVertical, RefreshCw } from 'lucide-react';
 
 interface AisleDoubleViewProps {
   aisles: AislePair[];
@@ -11,6 +11,9 @@ interface AisleDoubleViewProps {
   auditFindings: Map<string, AuditFinding>;
   searchQuery: string;
   onSlotClick: (slot: SlotData) => void;
+  onSyncAisle?: (aisleId: number) => void;
+  isSyncingAisle?: boolean;
+  lastSyncTime?: string;
 }
 
 export const AisleDoubleView: React.FC<AisleDoubleViewProps> = ({
@@ -22,6 +25,9 @@ export const AisleDoubleView: React.FC<AisleDoubleViewProps> = ({
   auditFindings,
   searchQuery,
   onSlotClick,
+  onSyncAisle,
+  isSyncingAisle,
+  lastSyncTime,
 }) => {
   const currentAisle = aisles.find(a => a.id === selectedAisleId) || aisles[0];
 
@@ -109,7 +115,7 @@ export const AisleDoubleView: React.FC<AisleDoubleViewProps> = ({
           </div>
         </div>
 
-        {/* Quick selector of standard aisles */}
+        {/* Quick selector of standard aisles & sync */}
         <div className="flex items-center gap-2">
           <select
             value={selectedAisleId}
@@ -122,6 +128,23 @@ export const AisleDoubleView: React.FC<AisleDoubleViewProps> = ({
               </option>
             ))}
           </select>
+
+          {onSyncAisle && (
+            <button
+              onClick={() => onSyncAisle(selectedAisleId)}
+              disabled={isSyncingAisle}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0a5c36] hover:bg-[#08482a] active:scale-95 text-white text-xs font-bold shadow-xs transition-all disabled:opacity-50 cursor-pointer"
+              title={`Sincronizar ${currentAisle.name} (Racks ${leftRack.id} y ${rightRack.id}) con diferencias de auditores`}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncingAisle ? 'animate-spin' : ''}`} />
+              <span>{isSyncingAisle ? `Sincronizando...` : `Sincronizar Pasillo`}</span>
+              {lastSyncTime && (
+                <span className="text-[10px] text-emerald-200 font-mono hidden sm:inline">
+                  ({lastSyncTime})
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
