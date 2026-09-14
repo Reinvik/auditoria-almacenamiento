@@ -57,7 +57,8 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
 
   // 3. Historial de ocupación diario
   const [history, setHistory] = useState<OccupancyHistoryPoint[]>(() => getOccupancyHistory());
-  const [selectedFilter, setSelectedFilter] = useState<'ALL' | 'CONGELADOS' | 'REFRIGERADOS'>('ALL');
+  const [selectedFilter, setSelectedFilter] = useState<'ALL' | 'CONGELADOS' | 'REFRIGERADOS' | 'TOTAL'>('ALL');
+  const [copiedEvolTable, setCopiedEvolTable] = useState<boolean>(false);
   const [showRackMatrix, setShowRackMatrix] = useState<boolean>(false);
   const [savedFeedback, setSavedFeedback] = useState<boolean>(false);
   const [hoveredPoint, setHoveredPoint] = useState<OccupancyHistoryPoint | null>(null);
@@ -106,6 +107,21 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
     setTimeout(() => setCopiedTable(false), 2500);
   };
 
+  // Copiar Tabla Resumen Evolutivo por Tipo de Frío al Portapapeles (formato TSV para Excel)
+  const handleCopyEvolTable = () => {
+    const headers = ['Etiquetas de fila', 'CONGELADOS', 'REFRIGERADOS', 'Total general'].join('\t');
+    const rows = history.map(h => [
+      h.date,
+      `${getPointCongeladoPct(h).toFixed(1).replace('.', ',')}%`,
+      `${getPointRefrigeradoPct(h).toFixed(1).replace('.', ',')}%`,
+      `${getPointTotalPct(h).toFixed(1).replace('.', ',')}%`,
+    ].join('\t')).join('\n');
+    const full = `${headers}\n${rows}`;
+    navigator.clipboard.writeText(full);
+    setCopiedEvolTable(true);
+    setTimeout(() => setCopiedEvolTable(false), 2500);
+  };
+
   // Guardar foto de hoy en el historial (registra ambos criterios)
   const handleSaveTodaySnapshot = () => {
     const todayLabel = formatCurrentDateLabel();
@@ -115,14 +131,19 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
       timestamp: new Date().toISOString(),
       congeladoPct: calculationMode === 'EXCEL' ? excelSummary.congelado.pctOcupacion : currentSummary.congelado.occupancyPct,
       refrigeradoPct: calculationMode === 'EXCEL' ? excelSummary.refrigerado.pctOcupacion : currentSummary.refrigerado.occupancyPct,
+      totalPct: calculationMode === 'EXCEL' ? excelSummary.global.pctOcupacion : currentSummary.global.occupancyPct,
       excelCongeladoPct: excelSummary.congelado.pctOcupacion,
       excelRefrigeradoPct: excelSummary.refrigerado.pctOcupacion,
+      excelTotalPct: excelSummary.global.pctOcupacion,
       operativoCongeladoPct: currentSummary.congelado.occupancyPct,
       operativoRefrigeradoPct: currentSummary.refrigerado.occupancyPct,
+      operativoTotalPct: currentSummary.global.occupancyPct,
       congeladoOccupied: currentSummary.congelado.occupiedPositions,
       congeladoCapacity: currentSummary.congelado.capacityPositions,
       refrigeradoOccupied: currentSummary.refrigerado.occupiedPositions,
       refrigeradoCapacity: currentSummary.refrigerado.capacityPositions,
+      totalOccupied: currentSummary.global.occupiedPositions,
+      totalCapacity: currentSummary.global.capacityPositions,
     };
 
     // Si ya existe hoy, reemplazarlo; si no, agregarlo al final
@@ -196,6 +217,17 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
     return h.operativoRefrigeradoPct ?? h.refrigeradoPct;
   };
 
+  const getPointTotalPct = (h: OccupancyHistoryPoint) => {
+    if (calculationMode === 'EXCEL') {
+      return h.excelTotalPct ?? h.totalPct ?? (
+        Math.round(((h.congeladoPct * 1024 + h.refrigeradoPct * 4069) / 5093) * 10) / 10
+      );
+    }
+    return h.operativoTotalPct ?? h.totalPct ?? (
+      Math.round(((h.congeladoPct * 1024 + h.refrigeradoPct * 4069) / 5093) * 10) / 10
+    );
+  };
+
   // Puntos para líneas SVG
   const congeladosPolyline = history
     .map((h, i) => `${getX(i)},${getY(getPointCongeladoPct(h))}`)
@@ -203,6 +235,10 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
 
   const refrigeradosPolyline = history
     .map((h, i) => `${getX(i)},${getY(getPointRefrigeradoPct(h))}`)
+    .join(' ');
+
+  const totalPolyline = history
+    .map((h, i) => `${getX(i)},${getY(getPointTotalPct(h))}`)
     .join(' ');
 
   return (
@@ -256,6 +292,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
               <option value="ALL">Todos los Sectores</option>
               <option value="CONGELADOS">CONGELADOS (Racks 1-8)</option>
               <option value="REFRIGERADOS">REFRIGERADOS (Racks 9-29)</option>
+              <option value="TOTAL">TOTAL GENERAL (Almacén Completo)</option>
             </select>
           </div>
 
@@ -313,7 +350,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
             <div className="text-left">
               <div className="leading-tight font-black">Criterio Excel (Ubicaciones Físicas)</div>
               <div className={`text-[10px] font-medium ${calculationMode === 'EXCEL' ? 'text-emerald-100' : 'text-slate-500'}`}>
-                1 hueco = 1 ubi • CGO 77,6% • PBK 81,8% • Global 85,0%
+                1 hueco = 1 ubi • CGO 82,0% • PBK 84,9% • REF 88,4% • Global 87,2%
               </div>
             </div>
           </button>
@@ -888,6 +925,98 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
         </div>
       </div>
 
+      {/* 2.6 TABLA RESUMEN EVOLUTIVO POR TIPO DE FRÍO (FORMATO HOJA EVOL. PLANIFICACION) */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 bg-gradient-to-r from-slate-100 via-slate-50 to-white border-b border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-slate-800 text-white shadow-xs">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-black text-slate-900">
+                  Evolutivo de Ocupación por Tipo de Frío (Hoja EVOL. PLANIFICACION)
+                </h3>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-blue-100 text-blue-900 border border-blue-200">
+                  {history.length} Fechas Oficiales
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Ponderación gerencial CIAL: <span className="font-bold text-slate-700">CONGELADOS (CGO 1.024)</span> • <span className="font-bold text-slate-700">REFRIGERADOS (PBK+PFW+RCK 4.069)</span> • <span className="font-bold text-slate-700">Total General (5.093)</span>
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleCopyEvolTable}
+            className={`px-3 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 ${
+              copiedEvolTable 
+                ? 'bg-emerald-600 text-white' 
+                : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-300'
+            }`}
+            title="Copiar tabla de evolutivo para pegar directo en Excel"
+          >
+            {copiedEvolTable ? (
+              <>
+                <Check className="w-4 h-4" />
+                <span>¡Evolutivo Copiado!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-4 h-4 text-slate-500" />
+                <span>📋 Copiar Evolutivo para Excel</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        <div className="overflow-x-auto max-h-72 overflow-y-auto">
+          <table className="w-full text-xs text-left border-collapse">
+            <thead className="sticky top-0 z-10 bg-slate-100 text-slate-700 font-black border-b border-slate-300 shadow-xs">
+              <tr>
+                <th className="py-2.5 px-4">Etiquetas de fila</th>
+                <th className="py-2.5 px-4 text-right text-[#0e4c68]">CONGELADOS</th>
+                <th className="py-2.5 px-4 text-right text-[#0a5c36]">REFRIGERADOS</th>
+                <th className="py-2.5 px-4 text-right text-slate-900 bg-slate-200/60 font-black">Total general</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200/70 font-semibold text-slate-700">
+              {history.map((h, idx) => {
+                const isLatest = idx === history.length - 1;
+                return (
+                  <tr 
+                    key={`hist_row_${h.id}`} 
+                    className={`transition-colors ${
+                      isLatest 
+                        ? 'bg-emerald-50/80 font-black text-slate-900 border-l-4 border-l-emerald-600' 
+                        : 'hover:bg-slate-50/80'
+                    }`}
+                  >
+                    <td className="py-2 px-4 font-bold flex items-center gap-2">
+                      <span>{h.date}</span>
+                      {isLatest && (
+                        <span className="text-[10px] px-1.5 py-0.2 bg-emerald-200 text-emerald-900 rounded font-black">
+                          Último Reporte
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2 px-4 text-right font-mono font-bold text-[#0e4c68]">
+                      {formatPct(getPointCongeladoPct(h))}
+                    </td>
+                    <td className="py-2 px-4 text-right font-mono font-bold text-[#0a5c36]">
+                      {formatPct(getPointRefrigeradoPct(h))}
+                    </td>
+                    <td className="py-2 px-4 text-right font-mono font-black text-slate-900 bg-slate-100/40">
+                      {formatPct(getPointTotalPct(h))}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* 3. GRÁFICO DE LÍNEAS OFICIAL CIAL (Idéntico a Imagen 2) */}
       <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
         {/* Encabezado del Gráfico con Leyenda idéntica a Imagen 2 */}
@@ -913,6 +1042,12 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
               <div className="flex items-center gap-2">
                 <span className="w-5 h-1 bg-[#0a5c36] rounded-full inline-block" />
                 <span className="text-slate-800">REFRIGERADOS</span>
+              </div>
+            )}
+            {(selectedFilter === 'ALL' || selectedFilter === 'TOTAL') && (
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-1 bg-[#334155] rounded-full inline-block border-b-2 border-dashed border-[#334155]" />
+                <span className="text-slate-800">TOTAL GENERAL</span>
               </div>
             )}
           </div>
@@ -950,6 +1085,56 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                 );
               })}
 
+              {/* Línea TOTAL GENERAL (Dashed) */}
+              {(selectedFilter === 'ALL' || selectedFilter === 'TOTAL') && (
+                <>
+                  <polyline
+                    fill="none"
+                    stroke="#334155"
+                    strokeWidth="3"
+                    strokeDasharray="5 3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    points={totalPolyline}
+                  />
+                  {/* Puntos y Etiquetas TOTAL GENERAL */}
+                  {history.map((h, i) => {
+                    const x = getX(i);
+                    const y = getY(getPointTotalPct(h));
+                    const isHovered = hoveredPoint?.id === h.id;
+                    const isLast = i === history.length - 1;
+                    return (
+                      <g 
+                        key={`t_${h.id}`}
+                        onMouseEnter={() => setHoveredPoint(h)}
+                        onMouseLeave={() => setHoveredPoint(null)}
+                        className="cursor-pointer"
+                      >
+                        <circle
+                          cx={x}
+                          cy={y}
+                          r={isHovered ? 6 : 3.5}
+                          fill="#ffffff"
+                          stroke="#334155"
+                          strokeWidth={isHovered ? 3.5 : 2.2}
+                          className="transition-all"
+                        />
+                        {(isHovered || isLast || selectedFilter === 'TOTAL') && (
+                          <text
+                            x={x}
+                            y={y - 12}
+                            textAnchor="middle"
+                            className="text-[11px] font-black fill-slate-800 tracking-tight"
+                          >
+                            {formatPct(getPointTotalPct(h))}
+                          </text>
+                        )}
+                      </g>
+                    );
+                  })}
+                </>
+              )}
+
               {/* Línea CONGELADOS */}
               {(selectedFilter === 'ALL' || selectedFilter === 'CONGELADOS') && (
                 <>
@@ -964,7 +1149,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                   {/* Puntos y Etiquetas CONGELADOS */}
                   {history.map((h, i) => {
                     const x = getX(i);
-                    const y = getY(h.congeladoPct);
+                    const y = getY(getPointCongeladoPct(h));
                     const isHovered = hoveredPoint?.id === h.id;
                     return (
                       <g 
@@ -989,7 +1174,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                           textAnchor="middle"
                           className="text-[11px] font-extrabold fill-slate-900 tracking-tight"
                         >
-                          {formatPct(h.congeladoPct)}
+                          {formatPct(getPointCongeladoPct(h))}
                         </text>
                       </g>
                     );
@@ -1011,7 +1196,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                   {/* Puntos y Etiquetas REFRIGERADOS */}
                   {history.map((h, i) => {
                     const x = getX(i);
-                    const y = getY(h.refrigeradoPct);
+                    const y = getY(getPointRefrigeradoPct(h));
                     const isHovered = hoveredPoint?.id === h.id;
                     return (
                       <g 
@@ -1036,7 +1221,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                           textAnchor="middle"
                           className="text-[11px] font-black fill-[#0a5c36] tracking-tight"
                         >
-                          {formatPct(h.refrigeradoPct)}
+                          {formatPct(getPointRefrigeradoPct(h))}
                         </text>
                       </g>
                     );
@@ -1072,11 +1257,15 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-sky-300 font-bold">❄️ Congelados:</span>
-                  <strong className="text-white font-black">{formatPct(hoveredPoint.congeladoPct)}</strong>
+                  <strong className="text-white font-black">{formatPct(getPointCongeladoPct(hoveredPoint))}</strong>
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-emerald-300 font-bold">🧊 Refrigerados:</span>
-                  <strong className="text-white font-black">{formatPct(hoveredPoint.refrigeradoPct)}</strong>
+                  <strong className="text-white font-black">{formatPct(getPointRefrigeradoPct(hoveredPoint))}</strong>
+                </div>
+                <div className="flex items-center justify-between gap-4 pt-1 border-t border-slate-700">
+                  <span className="text-slate-300 font-bold">🏢 Total General:</span>
+                  <strong className="text-emerald-400 font-black">{formatPct(getPointTotalPct(hoveredPoint))}</strong>
                 </div>
               </div>
             )}
