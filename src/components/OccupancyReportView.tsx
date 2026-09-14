@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { StockItem } from '../types/warehouse';
 import { 
   calculateWarehouseOccupancy, 
@@ -12,6 +12,7 @@ import {
   ExcelPivotRow
 } from '../utils/occupancyCalculator';
 import cialLogo from '../assets/cial-alimentos-logo.png';
+import { EmailReportModal } from './EmailReportModal';
 import { 
   Camera, 
   Plus, 
@@ -29,7 +30,9 @@ import {
   FileSpreadsheet,
   Boxes,
   Copy,
-  Table
+  Table,
+  Mail,
+  Send
 } from 'lucide-react';
 
 interface OccupancyReportViewProps {
@@ -61,6 +64,8 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
   const [showRackMatrix, setShowRackMatrix] = useState<boolean>(false);
   const [savedFeedback, setSavedFeedback] = useState<boolean>(false);
   const [hoveredPoint, setHoveredPoint] = useState<OccupancyHistoryPoint | null>(null);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState<boolean>(false);
+  const svgRef = useRef<SVGSVGElement | null>(null);
 
   // Formateador de porcentajes con coma chilena (ej: 81,5%)
   const formatPct = (val: number) => `${val.toFixed(1).replace('.', ',')}%`;
@@ -263,6 +268,15 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
               <option value="REFRIGERADOS">REFRIGERADOS (Racks 9-29)</option>
             </select>
           </div>
+
+          <button
+            onClick={() => setIsEmailModalOpen(true)}
+            className="px-3.5 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-blue-700 to-[#004b87] hover:from-blue-800 hover:to-[#003866] text-white shadow-sm flex items-center gap-1.5 cursor-pointer transition-all hover:shadow"
+            title="Generar y redactar correo oficial de ocupación para gerencia"
+          >
+            <Mail className="w-4 h-4" />
+            <span>✉️ Correo Oficial CD</span>
+          </button>
 
           <button
             onClick={handleSaveTodaySnapshot}
@@ -906,20 +920,32 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
             </span>
           </div>
 
-          {/* Leyenda corporativa con líneas de color */}
-          <div className="flex items-center gap-5 text-xs font-bold">
-            {(selectedFilter === 'ALL' || selectedFilter === 'CONGELADOS') && (
-              <div className="flex items-center gap-2">
-                <span className="w-5 h-1 bg-[#0e4c68] rounded-full inline-block" />
-                <span className="text-slate-800">CONGELADOS</span>
-              </div>
-            )}
-            {(selectedFilter === 'ALL' || selectedFilter === 'REFRIGERADOS') && (
-              <div className="flex items-center gap-2">
-                <span className="w-5 h-1 bg-[#0a5c36] rounded-full inline-block" />
-                <span className="text-slate-800">REFRIGERADOS</span>
-              </div>
-            )}
+          <div className="flex items-center gap-3">
+            {/* Leyenda corporativa con líneas de color */}
+            <div className="flex items-center gap-5 text-xs font-bold">
+              {(selectedFilter === 'ALL' || selectedFilter === 'CONGELADOS') && (
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-1 bg-[#0e4c68] rounded-full inline-block" />
+                  <span className="text-slate-800">CONGELADOS</span>
+                </div>
+              )}
+              {(selectedFilter === 'ALL' || selectedFilter === 'REFRIGERADOS') && (
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-1 bg-[#0a5c36] rounded-full inline-block" />
+                  <span className="text-slate-800">REFRIGERADOS</span>
+                </div>
+              )}
+            </div>
+
+            {/* Botón directo para generar correo */}
+            <button
+              onClick={() => setIsEmailModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl text-xs font-black bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              title="Abrir generador de correo Outlook con este gráfico para gerencia"
+            >
+              <Send className="w-3.5 h-3.5 text-blue-700" />
+              <span>Enviar a Gerencia</span>
+            </button>
           </div>
         </div>
 
@@ -927,9 +953,80 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
         <div className="w-full overflow-x-auto">
           <div className="min-w-[820px] relative">
             <svg
+              ref={svgRef}
               viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-              className="w-full h-auto overflow-visible select-none"
+              className="w-full h-auto overflow-visible select-none rounded-xl"
             >
+              {/* Fondo blanco sólido para exportación nítida a Outlook */}
+              <rect width={svgWidth} height={svgHeight} fill="#ffffff" rx={8} />
+
+              {/* Título en la imagen exportada */}
+              <text
+                x={paddingLeft}
+                y={28}
+                fontSize="11"
+                fontWeight="900"
+                fill="#1e293b"
+                letterSpacing="0.04em"
+              >
+                EVOLUCIÓN HISTÓRICA DE OCUPACIÓN ({history.length} FECHAS REGISTRADAS)
+              </text>
+              <rect
+                x={paddingLeft + 355}
+                y={15}
+                width={150}
+                height={18}
+                rx={4}
+                fill="#f1f5f9"
+              />
+              <text
+                x={paddingLeft + 430}
+                y={27.5}
+                textAnchor="middle"
+                fontSize="10"
+                fontWeight="700"
+                fill="#64748b"
+              >
+                Base oficial: 03-ago al {history[history.length - 1]?.date || 'actual'}
+              </text>
+
+              {/* Leyenda en la imagen exportada */}
+              <line
+                x1={svgWidth - paddingRight - 195}
+                y1={24}
+                x2={svgWidth - paddingRight - 175}
+                y2={24}
+                stroke="#0e4c68"
+                strokeWidth="3.2"
+                strokeLinecap="round"
+              />
+              <text
+                x={svgWidth - paddingRight - 168}
+                y={28}
+                fontSize="11"
+                fontWeight="800"
+                fill="#1e293b"
+              >
+                CONGELADOS
+              </text>
+              <line
+                x1={svgWidth - paddingRight - 85}
+                y1={24}
+                x2={svgWidth - paddingRight - 65}
+                y2={24}
+                stroke="#0a5c36"
+                strokeWidth="3.2"
+                strokeLinecap="round"
+              />
+              <text
+                x={svgWidth - paddingRight - 58}
+                y={28}
+                fontSize="11"
+                fontWeight="800"
+                fill="#1e293b"
+              >
+                REFRIGERADOS
+              </text>
               {/* Líneas horizontales de guía (Gridlines cada 10%) */}
               {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(pct => {
                 const y = getY(pct);
@@ -1204,6 +1301,14 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Modal para generar y enviar el Correo Oficial CD (Reemplazo VBA Excel) */}
+      <EmailReportModal
+        isOpen={isEmailModalOpen}
+        onClose={() => setIsEmailModalOpen(false)}
+        svgElement={svgRef.current}
+        lastDateLabel={history[history.length - 1]?.date}
+      />
     </div>
   );
 };

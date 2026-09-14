@@ -29,3 +29,6 @@ dist-ssr
 
 .vercel
 scripts/
+*.xlsx
+*.xlsm
+~$*
