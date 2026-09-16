@@ -8,8 +8,16 @@ import {
   ClipboardPaste, 
   RotateCcw, 
   AlertCircle,
-  Sparkles
+  Sparkles,
+  Terminal,
+  Download,
+  Copy,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Code
 } from 'lucide-react';
+import { SAP_VBS_SCRIPT_CONTENT } from '../utils/sapScriptSource';
 
 interface DataImportModalProps {
   isOpen: boolean;
@@ -49,11 +57,31 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const [activeTab, setActiveTab] = useState<'paste' | 'file' | 'restore'>('paste');
+  const [activeTab, setActiveTab] = useState<'paste' | 'file' | 'restore' | 'sap'>('paste');
   const [pastedText, setPastedText] = useState<string>('');
   const [parsedPreviewCount, setParsedPreviewCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [copiedScript, setCopiedScript] = useState<boolean>(false);
+  const [showCodePreview, setShowCodePreview] = useState<boolean>(false);
+
+  const handleDownloadScript = () => {
+    const blob = new Blob([SAP_VBS_SCRIPT_CONTENT], { type: 'text/vbscript;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Descargar_LX02_Almacenamiento.vbs';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopyScript = () => {
+    navigator.clipboard.writeText(SAP_VBS_SCRIPT_CONTENT);
+    setCopiedScript(true);
+    setTimeout(() => setCopiedScript(false), 2500);
+  };
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const txt = e.target.value;
@@ -180,6 +208,23 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
             <RotateCcw className="w-4 h-4" />
             <span>Restaurar Base Oficial</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('sap')}
+            className={`px-3 py-2 border-b-2 flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeTab === 'sap'
+                ? 'border-blue-600 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Terminal className="w-4 h-4 text-blue-600" />
+            <span className="flex items-center gap-1.5">
+              <span>Script SAP (.vbs)</span>
+              <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full font-black">
+                ⚡ Auto
+              </span>
+            </span>
+          </button>
         </div>
 
         {/* Body Content */}
@@ -273,6 +318,137 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
                 <RotateCcw className="w-4 h-4 text-[#0a5c36]" />
                 Restaurar los 4.641 registros originales
               </button>
+            </div>
+          )}
+
+          {/* TAB 4: SCRIPT SAP (.VBS) */}
+          {activeTab === 'sap' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50/50 border border-blue-200">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-blue-600 text-white shadow-xs shrink-0">
+                      <Terminal className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900">
+                        Script SAP GUI Standalone (.vbs)
+                      </h4>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        Automatiza la extracción de stock desde SAP GUI y guarda el archivo directamente en tu Escritorio.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadScript}
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer shrink-0"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Descargar .vbs</span>
+                  </button>
+                </div>
+
+                {/* Parámetros configurados */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 pt-3 border-t border-blue-200/60">
+                  <div className="bg-white/80 p-2 rounded-lg border border-blue-100 text-center">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Transacción</span>
+                    <span className="text-xs font-mono font-black text-blue-900">/nLX02</span>
+                  </div>
+                  <div className="bg-white/80 p-2 rounded-lg border border-blue-100 text-center">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Centro</span>
+                    <span className="text-xs font-mono font-black text-blue-900">NCD</span>
+                  </div>
+                  <div className="bg-white/80 p-2 rounded-lg border border-blue-100 text-center">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Tipos Almacén</span>
+                    <span className="text-xs font-mono font-black text-blue-900">PBK, CGO, PFW, RCK</span>
+                  </div>
+                  <div className="bg-white/80 p-2 rounded-lg border border-blue-100 text-center">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Variante ALV</span>
+                    <span className="text-xs font-mono font-black text-blue-900">/JESTAY</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pasos de Uso */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2.5">
+                <h5 className="text-xs font-black uppercase text-slate-700 tracking-wide">
+                  Instrucciones de Uso Rápido:
+                </h5>
+                <ol className="space-y-2 text-xs text-slate-700">
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 font-black flex items-center justify-center text-[11px] shrink-0 mt-0.5">
+                      1
+                    </span>
+                    <span>
+                      Abre tu <strong>SAP GUI</strong> e inicia sesión en el mandante habitual de CIAL Alimentos.
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 font-black flex items-center justify-center text-[11px] shrink-0 mt-0.5">
+                      2
+                    </span>
+                    <span>
+                      Haz doble clic en el archivo <strong>Descargar_LX02_Almacenamiento.vbs</strong> descargado.
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 font-black flex items-center justify-center text-[11px] shrink-0 mt-0.5">
+                      3
+                    </span>
+                    <span>
+                      El script ejecutará automáticamente la transacción y guardará <code className="bg-white px-1.5 py-0.5 rounded border border-slate-300 font-mono text-[11px] font-bold">LX02_Almacenamiento.xlsx</code> en tu <strong>Escritorio</strong>.
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 font-black flex items-center justify-center text-[11px] shrink-0 mt-0.5">
+                      4
+                    </span>
+                    <span>
+                      Regresa a esta ventana y arrastra el archivo a la pestaña <strong>Subir Archivo Excel</strong> (o copia y pega sus columnas).
+                    </span>
+                  </li>
+                </ol>
+              </div>
+
+              {/* Botones de acción secundaria y código */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleCopyScript}
+                  className="px-3 py-2 rounded-xl text-xs font-black bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-all"
+                >
+                  {copiedScript ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-600" />
+                      <span className="text-emerald-700">¡Código VBS Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4 text-slate-500" />
+                      <span>Copiar Código del Script (.vbs)</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowCodePreview(!showCodePreview)}
+                  className="px-3 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Code className="w-4 h-4 text-slate-500" />
+                  <span>{showCodePreview ? 'Ocultar Código Fuente' : 'Ver Código Fuente'}</span>
+                  {showCodePreview ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+
+              {/* Visor de Código Plegable */}
+              {showCodePreview && (
+                <pre className="p-3 bg-slate-900 text-slate-200 text-[11px] font-mono rounded-xl max-h-48 overflow-y-auto border border-slate-700 select-all">
+                  {SAP_VBS_SCRIPT_CONTENT}
+                </pre>
+              )}
             </div>
           )}
         </div>
