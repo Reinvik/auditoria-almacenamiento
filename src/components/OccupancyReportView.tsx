@@ -1,16 +1,22 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { StockItem } from '../types/warehouse';
 import { 
   calculateWarehouseOccupancy, 
-  calculateExcelPivotSummary,
+  calculateExcelPivotSummary, 
   getOccupancyHistory, 
   saveOccupancyHistory, 
+  mergeOccupancyHistories,
   formatCurrentDateLabel,
   OccupancyHistoryPoint,
   INITIAL_OCCUPANCY_HISTORY,
   ExcelOccupancySummary,
   ExcelPivotRow
 } from '../utils/occupancyCalculator';
+import { 
+  fetchOccupancyHistoryFromSupabase, 
+  saveOccupancyHistoryToSupabase, 
+  subscribeToOccupancyHistory 
+} from '../services/supabaseService';
 import cialLogo from '../assets/cial-alimentos-logo.png';
 import { EmailReportModal } from './EmailReportModal';
 import { 
@@ -32,7 +38,9 @@ import {
   Copy,
   Table,
   Mail,
-  Send
+  Send,
+  Cloud,
+  RefreshCw
 } from 'lucide-react';
 
 interface OccupancyReportViewProps {
@@ -58,14 +66,94 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
     return calculateExcelPivotSummary(stockIndex);
   }, [stockIndex]);
 
-  // 3. Historial de ocupación diario
+  // 3. Historial de ocupación diario con persistencia local y en Supabase
   const [history, setHistory] = useState<OccupancyHistoryPoint[]>(() => getOccupancyHistory());
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [selectedFilter, setSelectedFilter] = useState<'ALL' | 'CONGELADOS' | 'REFRIGERADOS'>('ALL');
   const [showRackMatrix, setShowRackMatrix] = useState<boolean>(false);
   const [savedFeedback, setSavedFeedback] = useState<boolean>(false);
   const [hoveredPoint, setHoveredPoint] = useState<OccupancyHistoryPoint | null>(null);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState<boolean>(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
+
+  // Sincronización bidireccional automática con Supabase para compartir historial entre navegadores y PCs
+  useEffect(() => {
+    let isMounted = true;
+
+    async function syncWithCloud() {
+      setSyncStatus('syncing');
+      try {
+        const cloudData = await fetchOccupancyHistoryFromSupabase();
+        if (!isMounted) return;
+
+        const localData = getOccupancyHistory();
+
+        if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
+          // Si el navegador actual tiene fechas nuevas (ej. 15-sept o 16-sept) que aún no estaban en la nube,
+          // combinamos ambos sin perder nada y actualizamos Supabase.
+          const merged = mergeOccupancyHistories(cloudData, localData);
+          setHistory(merged);
+          saveOccupancyHistory(merged);
+          setSyncStatus('synced');
+
+          if (merged.length > cloudData.length) {
+            await saveOccupancyHistoryToSupabase(merged);
+          }
+        } else {
+          // Si la nube aún no tiene registros, inicializarla con el historial local
+          if (localData && localData.length > 0) {
+            await saveOccupancyHistoryToSupabase(localData);
+          }
+          setSyncStatus('synced');
+        }
+      } catch (err) {
+        console.warn('Error al sincronizar historial con Supabase:', err);
+        if (isMounted) setSyncStatus('error');
+      }
+    }
+
+    syncWithCloud();
+
+    // Escuchar actualizaciones en tiempo real cuando otro PC guarde una foto
+    const unsubscribe = subscribeToOccupancyHistory((newRemoteHistory) => {
+      if (!isMounted) return;
+      if (Array.isArray(newRemoteHistory) && newRemoteHistory.length > 0) {
+        setHistory(prev => {
+          const merged = mergeOccupancyHistories(prev, newRemoteHistory);
+          saveOccupancyHistory(merged);
+          return merged;
+        });
+        setSyncStatus('synced');
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, []);
+
+  // Sincronización manual bajo demanda
+  const handleManualSync = async () => {
+    setSyncStatus('syncing');
+    try {
+      const cloudData = await fetchOccupancyHistoryFromSupabase();
+      const localData = getOccupancyHistory();
+      if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
+        const merged = mergeOccupancyHistories(cloudData, localData);
+        setHistory(merged);
+        saveOccupancyHistory(merged);
+        if (merged.length > cloudData.length) {
+          await saveOccupancyHistoryToSupabase(merged);
+        }
+      } else if (localData.length > 0) {
+        await saveOccupancyHistoryToSupabase(localData);
+      }
+      setSyncStatus('synced');
+    } catch {
+      setSyncStatus('error');
+    }
+  };
 
   // Formateador de porcentajes con coma chilena (ej: 81,5%)
   const formatPct = (val: number) => `${val.toFixed(1).replace('.', ',')}%`;
@@ -111,8 +199,8 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
     setTimeout(() => setCopiedTable(false), 2500);
   };
 
-  // Guardar foto de hoy en el historial (registra ambos criterios)
-  const handleSaveTodaySnapshot = () => {
+  // Guardar foto de hoy en el historial (registra ambos criterios y persiste en Supabase)
+  const handleSaveTodaySnapshot = async () => {
     const todayLabel = formatCurrentDateLabel();
     const newPoint: OccupancyHistoryPoint = {
       id: `snap_${Date.now()}`,
@@ -148,38 +236,50 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
     setHistory(updated);
     saveOccupancyHistory(updated);
     setSavedFeedback(true);
-    setTimeout(() => setSavedFeedback(false), 2500);
+    setTimeout(() => setSavedFeedback(false), 3000);
+
+    // Persistencia inmediata en Supabase compartida con todos los navegadores/PCs
+    setSyncStatus('syncing');
+    const ok = await saveOccupancyHistoryToSupabase(updated);
+    setSyncStatus(ok ? 'synced' : 'error');
   };
 
   // Restablecer al historial oficial inicial
-  const handleResetHistory = () => {
-    if (window.confirm('¿Deseas restablecer el historial a los datos oficiales de agosto/septiembre?')) {
+  const handleResetHistory = async () => {
+    if (window.confirm('¿Deseas restablecer el historial a los datos oficiales de agosto/septiembre en todos los PCs?')) {
       setHistory(INITIAL_OCCUPANCY_HISTORY);
       saveOccupancyHistory(INITIAL_OCCUPANCY_HISTORY);
+      setSyncStatus('syncing');
+      const ok = await saveOccupancyHistoryToSupabase(INITIAL_OCCUPANCY_HISTORY);
+      setSyncStatus(ok ? 'synced' : 'error');
     }
   };
 
   // Eliminar un punto del historial
-  const handleDeletePoint = (id: string) => {
+  const handleDeletePoint = async (id: string) => {
     const updated = history.filter(h => h.id !== id);
     setHistory(updated);
     saveOccupancyHistory(updated);
+    setSyncStatus('syncing');
+    const ok = await saveOccupancyHistoryToSupabase(updated);
+    setSyncStatus(ok ? 'synced' : 'error');
   };
 
   // ══════════════════════════════════════════════════════════════════════════
-  // DIMENSIONES Y MATEMÁTICAS DEL GRÁFICO SVG (IDÉNTICO A IMAGEN 2)
-  // ══════════════════════════════════════════════════════════════════════════
-  const svgWidth = 1000;
-  const svgHeight = 420;
-  const paddingLeft = 65;
-  const paddingRight = 45;
-  const paddingTop = 55;
-  const paddingBottom = 45;
+  // DIMENSIONES Y MATEMÁTICAS DEL GRÁFICO SVG
+  // Ancho dinámico con mínimo 58px por punto para que nunca colisionen fechas ni números
+  const pointsCount = history.length;
+  const minPointSpacing = 58;
+  const paddingLeft = 70;
+  const paddingRight = 55;
+  const paddingTop = 50;
+  const paddingBottom = 65; // Margen ampliado para albergar fechas inclinadas con holgura
+  const svgHeight = 430;
+  const svgWidth = Math.max(1060, paddingLeft + paddingRight + Math.max(0, pointsCount - 1) * minPointSpacing);
 
   const chartAreaWidth = svgWidth - paddingLeft - paddingRight;
   const chartAreaHeight = svgHeight - paddingTop - paddingBottom;
 
-  const pointsCount = history.length;
   const stepX = pointsCount > 1 ? chartAreaWidth / (pointsCount - 1) : chartAreaWidth;
 
   const getY = (pct: number) => {
@@ -269,6 +369,45 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
             </select>
           </div>
 
+          {/* Botón e Indicador de Sincronización en la Nube (Supabase) */}
+          <button
+            type="button"
+            onClick={handleManualSync}
+            disabled={syncStatus === 'syncing'}
+            className={`px-3 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer border shadow-xs ${
+              syncStatus === 'syncing'
+                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                : syncStatus === 'synced'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                : syncStatus === 'error'
+                ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+            }`}
+            title="Historial compartido en tiempo real con Supabase. Clic para sincronizar ahora."
+          >
+            {syncStatus === 'syncing' ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                <span>Sincronizando...</span>
+              </>
+            ) : syncStatus === 'synced' ? (
+              <>
+                <Cloud className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Nube ({history.length} fechas)</span>
+              </>
+            ) : syncStatus === 'error' ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 text-amber-600" />
+                <span>Reintentar Nube</span>
+              </>
+            ) : (
+              <>
+                <Cloud className="w-3.5 h-3.5 text-slate-500" />
+                <span>Sincronizar Nube</span>
+              </>
+            )}
+          </button>
+
           <button
             onClick={() => setIsEmailModalOpen(true)}
             className="px-3.5 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-blue-700 to-[#004b87] hover:from-blue-800 hover:to-[#003866] text-white shadow-sm flex items-center gap-1.5 cursor-pointer transition-all hover:shadow"
@@ -280,17 +419,18 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
 
           <button
             onClick={handleSaveTodaySnapshot}
+            disabled={syncStatus === 'syncing'}
             className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all shadow-sm flex items-center gap-1.5 cursor-pointer ${
               savedFeedback 
                 ? 'bg-emerald-600 text-white' 
                 : 'bg-[#0a5c36] hover:bg-[#08482a] text-white'
             }`}
-            title="Registrar la ocupación calculada de hoy en la serie histórica"
+            title="Registrar la ocupación calculada de hoy y sincronizarla en Supabase para todos los computadores"
           >
             {savedFeedback ? (
               <>
                 <Check className="w-4 h-4" />
-                <span>¡Foto de Hoy Guardada!</span>
+                <span>¡Foto Guardada en Nube!</span>
               </>
             ) : (
               <>
@@ -912,11 +1052,8 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
         {/* Encabezado del Gráfico con Leyenda idéntica a Imagen 2 */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-black text-slate-700 uppercase tracking-wide">
+            <span className="text-xs font-black text-slate-800 uppercase tracking-wide">
               Evolución Histórica de Ocupación ({history.length} fechas registradas)
-            </span>
-            <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-bold hidden sm:inline">
-              Base oficial: 03-ago al {history[history.length - 1]?.date || 'actual'}
             </span>
           </div>
 
@@ -951,7 +1088,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
 
         {/* Lienzo SVG Interactivo */}
         <div className="w-full overflow-x-auto">
-          <div className="min-w-[820px] relative">
+          <div style={{ minWidth: `${Math.min(svgWidth, 1060)}px` }} className="relative">
             <svg
               ref={svgRef}
               viewBox={`0 0 ${svgWidth} ${svgHeight}`}
@@ -964,30 +1101,12 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
               <text
                 x={paddingLeft}
                 y={28}
-                fontSize="11"
+                fontSize="12"
                 fontWeight="900"
                 fill="#1e293b"
                 letterSpacing="0.04em"
               >
                 EVOLUCIÓN HISTÓRICA DE OCUPACIÓN ({history.length} FECHAS REGISTRADAS)
-              </text>
-              <rect
-                x={paddingLeft + 355}
-                y={15}
-                width={150}
-                height={18}
-                rx={4}
-                fill="#f1f5f9"
-              />
-              <text
-                x={paddingLeft + 430}
-                y={27.5}
-                textAnchor="middle"
-                fontSize="10"
-                fontWeight="700"
-                fill="#64748b"
-              >
-                Base oficial: 03-ago al {history[history.length - 1]?.date || 'actual'}
               </text>
 
               {/* Leyenda en la imagen exportada */}
@@ -1146,19 +1265,27 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                 </>
               )}
 
-              {/* Etiquetas Eje X (Fechas) */}
+              {/* Etiquetas Eje X (Fechas inclinadas anti-colisión con guía vertical) */}
               {history.map((h, i) => {
                 const x = getX(i);
+                const yAxis = svgHeight - paddingBottom;
                 return (
-                  <text
-                    key={`label_${h.id}`}
-                    x={x}
-                    y={svgHeight - paddingBottom + 25}
-                    textAnchor="middle"
-                    className="text-[11px] font-bold fill-slate-600"
-                  >
-                    {h.date}
-                  </text>
+                  <g key={`label_${h.id}`} transform={`translate(${x}, ${yAxis + 10})`}>
+                    {/* Tick mark vertical de referencia exacta hacia el punto */}
+                    <line x1={0} y1={-10} x2={0} y2={-3} stroke="#94a3b8" strokeWidth="1.2" />
+                    {/* Texto de fecha inclinado a -35° para evitar cualquier choque de datos */}
+                    <text
+                      x={-2}
+                      y={8}
+                      transform="rotate(-35)"
+                      textAnchor="end"
+                      fontSize="10.5"
+                      fontWeight="700"
+                      fill="#475569"
+                    >
+                      {h.date}
+                    </text>
+                  </g>
                 );
               })}
             </svg>
@@ -1188,7 +1315,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
         {/* Acciones del Historial */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
           <div className="text-slate-500 font-medium">
-            💡 <em>Los puntos se guardan permanentemente en tu navegador. Puedes añadir la foto diaria tras cada auditoría o subida de SAP.</em>
+            ☁️ <em>Sincronizado en tiempo real con Supabase. Las fotos de ocupación guardadas son visibles de inmediato en todos los computadores y navegadores.</em>
           </div>
 
           <div className="flex items-center gap-2">

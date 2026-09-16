@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { AuditFinding, StockItem } from '../types/warehouse';
+import { OccupancyHistoryPoint } from '../utils/occupancyCalculator';
 
 export interface AuditFindingRow {
   ubicacion: string;
@@ -393,3 +394,82 @@ export function subscribeToRealtimeChanges(
     supabase.removeChannel(channel);
   };
 }
+
+/**
+ * Obtiene el historial de ocupación diario compartido desde Supabase.
+ */
+export async function fetchOccupancyHistoryFromSupabase(): Promise<OccupancyHistoryPoint[] | null> {
+  try {
+    const { data, error } = await supabase
+      .from('altura_warehouse_state')
+      .select('*')
+      .eq('id', 'occupancy_history')
+      .maybeSingle();
+
+    if (error || !data) return null;
+    const history = data.stock_data as OccupancyHistoryPoint[];
+    if (Array.isArray(history) && history.length > 0) {
+      return history;
+    }
+    return null;
+  } catch (err) {
+    console.warn('Error al obtener historial de ocupación desde Supabase:', err);
+    return null;
+  }
+}
+
+/**
+ * Guarda el historial de ocupación diario en Supabase para sincronizarlo entre todos los PCs.
+ */
+export async function saveOccupancyHistoryToSupabase(
+  history: OccupancyHistoryPoint[]
+): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('altura_warehouse_state')
+      .upsert({
+        id: 'occupancy_history',
+        stock_data: history,
+        file_name: 'Historial Ocupación CD',
+        updated_by: 'Auditor',
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) {
+      console.warn('Error al guardar historial de ocupación en Supabase:', error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('Error de red al guardar historial en Supabase:', err);
+    return false;
+  }
+}
+
+/**
+ * Suscripción en tiempo real para cambios en el historial de ocupación entre navegadores y PCs.
+ */
+export function subscribeToOccupancyHistory(
+  onUpdate: (history: OccupancyHistoryPoint[]) => void
+) {
+  const channel = supabase
+    .channel('altura_occupancy_history_sync')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'altura_warehouse_state', filter: 'id=eq.occupancy_history' },
+      (payload) => {
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          const list = (payload.new as any)?.stock_data;
+          if (Array.isArray(list) && list.length > 0) {
+            onUpdate(list as OccupancyHistoryPoint[]);
+          }
+        }
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+

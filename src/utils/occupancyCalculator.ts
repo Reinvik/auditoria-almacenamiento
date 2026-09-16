@@ -378,6 +378,39 @@ export function saveOccupancyHistory(history: OccupancyHistoryPoint[]): void {
 }
 
 /**
+ * Combina dos conjuntos de historial de ocupación (ej. local y remoto) sin perder fechas.
+ * Mantiene orden cronológico / orden de aparición y actualiza con los datos más completos.
+ */
+export function mergeOccupancyHistories(
+  base: OccupancyHistoryPoint[],
+  incoming: OccupancyHistoryPoint[]
+): OccupancyHistoryPoint[] {
+  const map = new Map<string, OccupancyHistoryPoint>();
+
+  for (const pt of base) {
+    map.set(pt.date, pt);
+  }
+
+  for (const pt of incoming) {
+    if (map.has(pt.date)) {
+      const existing = map.get(pt.date)!;
+      map.set(pt.date, {
+        ...existing,
+        ...pt,
+        congeladoPct: pt.congeladoPct ?? existing.congeladoPct,
+        refrigeradoPct: pt.refrigeradoPct ?? existing.refrigeradoPct,
+        totalPct: pt.totalPct ?? existing.totalPct,
+      });
+    } else {
+      map.set(pt.date, pt);
+    }
+  }
+
+  return Array.from(map.values());
+}
+
+
+/**
  * Formatea una fecha actual en etiqueta corta tipo "05-sept"
  */
 export function formatCurrentDateLabel(d = new Date()): string {
