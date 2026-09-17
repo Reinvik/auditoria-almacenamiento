@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   StockItem, 
   SlotData, 
@@ -339,6 +339,50 @@ export default function App() {
       setSelectedAisleId(visibleAisles[0].id);
     }
   }, [visibleAisles, selectedAisleId]);
+
+  // Lista activa de pasillos (según filtro de auditor o zona)
+  const activeAisleList = useMemo(() => {
+    return visibleAisles.length > 0 ? visibleAisles : DEFAULT_AISLES;
+  }, [visibleAisles]);
+
+  // Pasillo actual correspondiente al rack seleccionado
+  const currentAisleForRack = useMemo(() => {
+    return activeAisleList.find(a => a.leftRackId === selectedRackId || a.rightRackId === selectedRackId)
+      || DEFAULT_AISLES.find(a => a.leftRackId === selectedRackId || a.rightRackId === selectedRackId)
+      || activeAisleList[0];
+  }, [activeAisleList, selectedRackId]);
+
+  const currentAisleIndex = useMemo(() => {
+    return activeAisleList.findIndex(a => a.id === currentAisleForRack?.id);
+  }, [activeAisleList, currentAisleForRack]);
+
+  const hasPrevAisle = currentAisleIndex > 0;
+  const hasNextAisle = currentAisleIndex >= 0 && currentAisleIndex < activeAisleList.length - 1;
+
+  const handlePrevAisle = useCallback(() => {
+    if (currentAisleIndex > 0) {
+      const prevAisle = activeAisleList[currentAisleIndex - 1];
+      setSelectedAisleId(prevAisle.id);
+      setSelectedRackId(prevAisle.leftRackId);
+    }
+  }, [currentAisleIndex, activeAisleList]);
+
+  const handleNextAisle = useCallback(() => {
+    if (currentAisleIndex >= 0 && currentAisleIndex < activeAisleList.length - 1) {
+      const nextAisle = activeAisleList[currentAisleIndex + 1];
+      setSelectedAisleId(nextAisle.id);
+      setSelectedRackId(nextAisle.leftRackId);
+    }
+  }, [currentAisleIndex, activeAisleList]);
+
+  // Cara opuesta dentro del mismo pasillo (ej: en Pasillo 4, cambiar entre Rack 7 y Rack 8)
+  const oppositeRackId = useMemo(() => {
+    if (!currentAisleForRack) return undefined;
+    if (currentAisleForRack.leftRackId === currentAisleForRack.rightRackId) return undefined;
+    return currentAisleForRack.leftRackId === selectedRackId 
+      ? currentAisleForRack.rightRackId 
+      : currentAisleForRack.leftRackId;
+  }, [currentAisleForRack, selectedRackId]);
 
   // Estadísticas de avance personal del auditor (por puntos de esfuerzo y celdas)
   const auditorProgressStats = useMemo(() => {
@@ -776,6 +820,14 @@ export default function App() {
             isSyncingRack={isSyncingRack}
             lastSyncTime={rackSyncTimes.get(selectedRackId)}
             rackDiscrepanciesCount={currentRackDiscrepanciesCount}
+            currentAisleName={currentAisleForRack?.name}
+            hasPrevAisle={hasPrevAisle}
+            hasNextAisle={hasNextAisle}
+            onPrevAisle={handlePrevAisle}
+            onNextAisle={handleNextAisle}
+            oppositeRackId={oppositeRackId}
+            onSelectRack={setSelectedRackId}
+            availableRacks={visibleRacks}
           />
         )}
       </main>
@@ -818,20 +870,38 @@ export default function App() {
       {/* BARRA DE NAVEGACIÓN MÓVIL INFERIOR (PWA MOBILE-FIRST)                 */}
       {/* ═══════════════════════════════════════════════════════════════════════ */}
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 py-1.5 px-3 flex items-center justify-around shadow-2xl safe-area-inset-bottom">
-        {/* Selector de Rack Móvil */}
+        {/* Selector de Rack y Pasillo Móvil con botones de avance rápido */}
         <div className="flex flex-col items-center">
-          <select
-            value={selectedRackId}
-            onChange={e => setSelectedRackId(Number(e.target.value))}
-            className="text-[11px] font-black text-[#0a5c36] bg-[#e6f4ea] border border-[#a3cfb6] rounded-lg px-2 py-1 focus:outline-none max-w-[90px] truncate"
-          >
-            {visibleRacks.map(r => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
-          <span className="text-[9px] text-slate-400 font-bold mt-0.5">Rack</span>
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={handlePrevAisle}
+              disabled={!hasPrevAisle}
+              className="p-1 rounded-md bg-slate-100 hover:bg-slate-200 disabled:opacity-30 disabled:pointer-events-none text-slate-700 active:scale-95 transition-all cursor-pointer border border-slate-200"
+              title="Pasillo anterior"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+            <select
+              value={selectedRackId}
+              onChange={e => setSelectedRackId(Number(e.target.value))}
+              className="text-[11px] font-black text-[#0a5c36] bg-[#e6f4ea] border border-[#a3cfb6] rounded-lg px-1.5 py-1 focus:outline-none max-w-[80px] truncate"
+            >
+              {visibleRacks.map(r => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={handleNextAisle}
+              disabled={!hasNextAisle}
+              className="p-1 rounded-md bg-slate-100 hover:bg-slate-200 disabled:opacity-30 disabled:pointer-events-none text-slate-700 active:scale-95 transition-all cursor-pointer border border-slate-200"
+              title="Pasillo siguiente"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <span className="text-[8.5px] text-slate-400 font-bold mt-0.5">Pasillo / Rack</span>
         </div>
 
         {/* Selector / Botón de Auditor Móvil */}

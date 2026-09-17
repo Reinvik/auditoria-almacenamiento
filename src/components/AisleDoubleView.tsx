@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { RackConfig, SlotData, AuditFinding, AislePair } from '../types/warehouse';
-import { ArrowDown, SplitSquareVertical, RefreshCw } from 'lucide-react';
+import { ArrowDown, SplitSquareVertical, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface AisleDoubleViewProps {
   aisles: AislePair[];
@@ -116,7 +116,20 @@ export const AisleDoubleView: React.FC<AisleDoubleViewProps> = ({
         </div>
 
         {/* Quick selector of standard aisles & sync */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <button
+            onClick={() => {
+              const idx = aisles.findIndex(a => a.id === selectedAisleId);
+              if (idx > 0) onSelectAisle(aisles[idx - 1].id);
+            }}
+            disabled={aisles.findIndex(a => a.id === selectedAisleId) <= 0}
+            className="flex items-center gap-1 p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-30 disabled:pointer-events-none text-slate-800 text-xs font-black border border-slate-300 active:scale-95 transition-all cursor-pointer shadow-2xs"
+            title="Pasillo anterior"
+          >
+            <ChevronLeft className="w-4 h-4 text-slate-600" />
+            <span className="hidden md:inline">Ant.</span>
+          </button>
+
           <select
             value={selectedAisleId}
             onChange={e => onSelectAisle(Number(e.target.value))}
@@ -128,6 +141,19 @@ export const AisleDoubleView: React.FC<AisleDoubleViewProps> = ({
               </option>
             ))}
           </select>
+
+          <button
+            onClick={() => {
+              const idx = aisles.findIndex(a => a.id === selectedAisleId);
+              if (idx >= 0 && idx < aisles.length - 1) onSelectAisle(aisles[idx + 1].id);
+            }}
+            disabled={aisles.findIndex(a => a.id === selectedAisleId) >= aisles.length - 1}
+            className="flex items-center gap-1 p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-30 disabled:pointer-events-none text-slate-800 text-xs font-black border border-slate-300 active:scale-95 transition-all cursor-pointer shadow-2xs"
+            title="Pasillo siguiente"
+          >
+            <span className="hidden md:inline">Sig.</span>
+            <ChevronRight className="w-4 h-4 text-slate-600" />
+          </button>
 
           {onSyncAisle && (
             <button

@@ -100,7 +100,7 @@ export const CellDetailModal: React.FC<CellDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
       {/* Mobile Drawer / Desktop Dialog */}
       <div className="bg-white border border-slate-300 w-full sm:max-w-xl rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] transition-all">
         {/* Mobile Pull Handle Indicator */}
