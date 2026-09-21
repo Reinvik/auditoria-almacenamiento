@@ -439,9 +439,9 @@ export const WAREHOUSE_RACKS: RackConfig[] = [
     "name": "RACK 13",
     "code": "013",
     "sheet": "RACK13",
-    "moduleCount": 29,
+    "moduleCount": 27,
     "minModule": "01301",
-    "maxModule": "01329",
+    "maxModule": "01327",
     "modules": [
       "01301",
       "01302",
@@ -469,9 +469,7 @@ export const WAREHOUSE_RACKS: RackConfig[] = [
       "01324",
       "01325",
       "01326",
-      "01327",
-      "01328",
-      "01329"
+      "01327"
     ]
   },
   {
@@ -796,9 +794,9 @@ export const WAREHOUSE_RACKS: RackConfig[] = [
     "name": "RACK 21",
     "code": "021",
     "sheet": "RACK21",
-    "moduleCount": 42,
+    "moduleCount": 40,
     "minModule": "02101",
-    "maxModule": "02142",
+    "maxModule": "02140",
     "modules": [
       "02101",
       "02102",
@@ -839,9 +837,7 @@ export const WAREHOUSE_RACKS: RackConfig[] = [
       "02137",
       "02138",
       "02139",
-      "02140",
-      "02141",
-      "02142"
+      "02140"
     ]
   },
   {

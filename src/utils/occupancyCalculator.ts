@@ -57,13 +57,52 @@ export interface WarehouseOccupancySummary {
 }
 
 /**
- * Mapeo determinístico de Tipo de Almacén SAP según rack y nivel.
+ * Mapeo determinístico de Tipo de Almacén SAP según rack y nivel (5.093 posiciones de almacenamiento).
  */
 export function getSlotTipoAlmacen(rackId: number, nivel: number): 'CGO' | 'PBK' | 'PFW' | 'RCK' {
   if (rackId <= 8) return 'CGO';
-  if (rackId >= 17 && rackId <= 19) return 'PFW';
-  if (rackId === 28) return nivel <= 3 ? 'PBK' : 'RCK';
+  if (rackId === 9 || rackId === 10 || rackId === 11 || rackId === 18) return 'PFW';
+  if (rackId === 19) return 'RCK';
+  if (rackId === 27 || rackId === 28) return nivel >= 3 ? 'RCK' : 'PBK';
   return 'PBK';
+}
+
+/**
+ * Determina si una posición pertenece al área de Almacenamiento (5.093 huecos)
+ * o si es una posición de Picking en nivel 1 (PCG, PMN, PF1, PPB) que no computa en la capacidad de almacenamiento.
+ */
+export function isAlmacenamientoSlot(rackId: number, nivel: number): boolean {
+  if (nivel === 1) {
+    if (
+      (rackId >= 6 && rackId <= 8) ||
+      (rackId >= 10 && rackId <= 17) ||
+      rackId === 19 ||
+      (rackId >= 20 && rackId <= 23)
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Determina la profundidad física oficial de almacenamiento según el diseño de CIAL CD San Jorge.
+ * Profundidad 1 = Simple, Profundidad 2 = Doble, Profundidad 3 = Triple.
+ */
+export function getSlotProfundidad(rackId: number): 1 | 2 | 3 {
+  if (rackId === 19) return 3;
+  if (
+    rackId === 1 || 
+    rackId === 8 || 
+    rackId === 9 || 
+    rackId === 10 || 
+    rackId === 11 || 
+    rackId === 18 || 
+    (rackId >= 20 && rackId <= 23)
+  ) {
+    return 2;
+  }
+  return 1;
 }
 
 export interface OccupancyHistoryPoint {
@@ -162,7 +201,9 @@ export const INITIAL_OCCUPANCY_HISTORY: OccupancyHistoryPoint[] = [
   { id: '17', date: '04-sept', timestamp: '2026-09-04T08:00:00.000Z', congeladoPct: 74.5, refrigeradoPct: 78.3, totalPct: 77.5 },
   { id: '18', date: '07-sept', timestamp: '2026-09-07T08:00:00.000Z', congeladoPct: 79.7, refrigeradoPct: 89.7, totalPct: 87.6 },
   { id: '19', date: '08-sept', timestamp: '2026-09-08T08:00:00.000Z', congeladoPct: 77.6, refrigeradoPct: 86.9, totalPct: 85.0 },
-  { id: '20', date: '14-sept', timestamp: '2026-09-14T08:00:00.000Z', congeladoPct: 82.0, refrigeradoPct: 88.4, totalPct: 87.2 },
+  { id: '20', date: '14-sept', timestamp: '2026-09-14T08:00:00.000Z', congeladoPct: 82.0, refrigeradoPct: 88.4, totalPct: 87.2, excelCongeladoPct: 82.03, excelRefrigeradoPct: 88.45, excelTotalPct: 87.16 },
+  { id: '21', date: '17-sept', timestamp: '2026-09-17T08:00:00.000Z', congeladoPct: 80.8, refrigeradoPct: 78.6, totalPct: 79.0, excelCongeladoPct: 80.76, excelRefrigeradoPct: 78.57, excelTotalPct: 79.01 },
+  { id: '22', date: '21-sept', timestamp: '2026-09-21T08:00:00.000Z', congeladoPct: 80.2, refrigeradoPct: 75.8, totalPct: 76.7, excelCongeladoPct: 80.18, excelRefrigeradoPct: 75.77, excelTotalPct: 76.65 },
 ];
 
 /**
@@ -351,6 +392,53 @@ export function calculateWarehouseOccupancy(
 }
 
 /**
+ * Sanitiza el historial de ocupación asegurando que:
+ * 1. Los puntos históricos oficiales de agosto y septiembre reflejen los valores certificados de Excel.
+ * 2. Se remuevan snapshots duplicados erróneos (ej. 15-sept y 16-sept repetidos con 82.0%/88.5%).
+ * 3. 17-sept y 21-sept contengan sus valores reales de evolución (80.8%/78.6% y 80.2%/75.8%).
+ */
+export function sanitizeOccupancyHistory(points: OccupancyHistoryPoint[]): OccupancyHistoryPoint[] {
+  if (!Array.isArray(points) || points.length === 0) {
+    return INITIAL_OCCUPANCY_HISTORY;
+  }
+
+  const officialMap = new Map<string, OccupancyHistoryPoint>();
+  for (const pt of INITIAL_OCCUPANCY_HISTORY) {
+    officialMap.set(pt.date, pt);
+  }
+
+  const result: OccupancyHistoryPoint[] = [];
+
+  for (const pt of points) {
+    // Si es un snapshot falso repetido del 15 o 16 de septiembre producto del bug anterior de isBaseline, omitir
+    if (
+      (pt.date === '15-sept' || pt.date === '16-sept') && 
+      Math.abs(pt.congeladoPct - 82) < 0.2 && 
+      Math.abs(pt.refrigeradoPct - 88.45) < 0.2
+    ) {
+      continue;
+    }
+
+    // Si coincide con una fecha oficial del reporte, priorizar siempre los valores certificados
+    if (officialMap.has(pt.date)) {
+      result.push(officialMap.get(pt.date)!);
+    } else {
+      result.push(pt);
+    }
+  }
+
+  // Asegurar que 17-sept y 21-sept estén presentes
+  if (!result.some(p => p.date === '17-sept') && officialMap.has('17-sept')) {
+    result.push(officialMap.get('17-sept')!);
+  }
+  if (!result.some(p => p.date === '21-sept') && officialMap.has('21-sept')) {
+    result.push(officialMap.get('21-sept')!);
+  }
+
+  return result;
+}
+
+/**
  * Obtiene el historial de ocupación desde localStorage o inicializa con la data histórica oficial.
  */
 export function getOccupancyHistory(): OccupancyHistoryPoint[] {
@@ -358,7 +446,9 @@ export function getOccupancyHistory(): OccupancyHistoryPoint[] {
     const saved = localStorage.getItem(LOCAL_STORAGE_OCCUPANCY_HISTORY_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return sanitizeOccupancyHistory(parsed);
+      }
     }
   } catch (e) {
     console.error('Error loading occupancy history', e);
@@ -371,7 +461,8 @@ export function getOccupancyHistory(): OccupancyHistoryPoint[] {
  */
 export function saveOccupancyHistory(history: OccupancyHistoryPoint[]): void {
   try {
-    localStorage.setItem(LOCAL_STORAGE_OCCUPANCY_HISTORY_KEY, JSON.stringify(history));
+    const clean = sanitizeOccupancyHistory(history);
+    localStorage.setItem(LOCAL_STORAGE_OCCUPANCY_HISTORY_KEY, JSON.stringify(clean));
   } catch (e) {
     console.warn('Error saving occupancy history', e);
   }
@@ -385,13 +476,16 @@ export function mergeOccupancyHistories(
   base: OccupancyHistoryPoint[],
   incoming: OccupancyHistoryPoint[]
 ): OccupancyHistoryPoint[] {
+  const cleanBase = sanitizeOccupancyHistory(base);
+  const cleanIncoming = sanitizeOccupancyHistory(incoming);
+
   const map = new Map<string, OccupancyHistoryPoint>();
 
-  for (const pt of base) {
+  for (const pt of cleanBase) {
     map.set(pt.date, pt);
   }
 
-  for (const pt of incoming) {
+  for (const pt of cleanIncoming) {
     if (map.has(pt.date)) {
       const existing = map.get(pt.date)!;
       map.set(pt.date, {
@@ -406,7 +500,7 @@ export function mergeOccupancyHistories(
     }
   }
 
-  return Array.from(map.values());
+  return sanitizeOccupancyHistory(Array.from(map.values()));
 }
 
 
@@ -431,146 +525,90 @@ export function calculateExcelPivotSummary(
 ): ExcelOccupancySummary {
   const master = EXCEL_MASTER_CAPACITIES;
 
-  // Conteo de ubicaciones físicas ocupadas por tipo de almacén
-  const occupiedByTipo: Record<'CGO' | 'PBK' | 'PFW' | 'RCK', number> = {
-    CGO: 0,
-    PBK: 0,
-    PFW: 0,
-    RCK: 0,
-  };
-
-  let cgoSingleEmpty = 0;
-  let cgoDoubleEmpty = 0;
-  let pbkSingleEmpty = 0;
-  let pbkDoubleEmpty = 0;
+  // Contadores por tipo de almacén basados en las 5.093 posiciones físicas oficiales
+  const simplesVacias: Record<'CGO' | 'PBK' | 'PFW' | 'RCK', number> = { CGO: 0, PBK: 0, PFW: 0, RCK: 0 };
+  const doblesVacias: Record<'CGO' | 'PBK' | 'PFW' | 'RCK', number> = { CGO: 0, PBK: 0, PFW: 0, RCK: 0 };
+  const triplesVacias: Record<'CGO' | 'PBK' | 'PFW' | 'RCK', number> = { CGO: 0, PBK: 0, PFW: 0, RCK: 0 };
+  const occupiedSlots: Record<'CGO' | 'PBK' | 'PFW' | 'RCK', number> = { CGO: 0, PBK: 0, PFW: 0, RCK: 0 };
 
   for (const rack of WAREHOUSE_RACKS) {
-    const isDouble = rack.id === 1 || rack.id === 8 || rack.id === 10 || rack.id === 12 || rack.id === 14 || rack.id === 16 || rack.id === 20 || rack.id === 22 || rack.id === 24 || rack.id === 26 || rack.id === 28;
+    const prof = getSlotProfundidad(rack.id);
     for (const mod of rack.modules) {
       for (let lvl = 1; lvl <= 6; lvl++) {
+        // Excluir posiciones de picking de nivel 1 que no forman parte de almacenamiento
+        if (!isAlmacenamientoSlot(rack.id, lvl)) continue;
+
         const ubi = `${mod}${String(lvl).padStart(2, '0')}`;
         const tipo = getSlotTipoAlmacen(rack.id, lvl);
         const items = stockIndex.get(ubi);
-        if (items && items.length > 0) {
-          occupiedByTipo[tipo]++;
+        const isOccupied = items && items.length > 0;
+
+        if (isOccupied) {
+          occupiedSlots[tipo]++;
         } else {
-          if (tipo === 'CGO') {
-            if (isDouble) cgoDoubleEmpty++; else cgoSingleEmpty++;
-          } else if (tipo === 'PBK') {
-            if (isDouble) pbkDoubleEmpty++; else pbkSingleEmpty++;
+          if (prof === 3) {
+            triplesVacias[tipo]++;
+          } else if (prof === 2) {
+            doblesVacias[tipo]++;
+          } else {
+            simplesVacias[tipo]++;
           }
         }
       }
     }
   }
 
-  // Detección de si coincide con el inventario oficial estándar (14-Septiembre):
-  // CGO: 840 ocupadas (o rango ~820-850), PBK: 2446, PFW: 651, RCK: 502
-  const isBaseline = Math.abs(occupiedByTipo.CGO - 840) < 45 || Math.abs(occupiedByTipo.CGO - 795) < 30;
+  const buildRow = (tipo: 'CGO' | 'PBK' | 'PFW' | 'RCK'): ExcelPivotRow => {
+    const total = master[tipo].total;
+    const sVac = simplesVacias[tipo];
+    const dVac = doblesVacias[tipo];
+    const tVac = triplesVacias[tipo];
+    const disponibles = sVac + dVac + tVac;
+    const ocupadas = Math.max(0, total - disponibles);
+    const pctOcupacion = total > 0 ? Math.round(((ocupadas / total) * 100) * 100) / 100 : 0;
 
-  // CGO (Congelado) - Total 1024
-  // Simples vacías: 177, Dobles vacías: 7, Ubicaciones disponibles: 184, Ocupadas: 840 -> 82,03%
-  const cgoOcupadas = isBaseline ? 840 : Math.min(master.CGO.total, occupiedByTipo.CGO);
-  const cgoDisponibles = Math.max(0, master.CGO.total - cgoOcupadas);
-  const cgoDobles = isBaseline ? 7 : Math.round(cgoDisponibles * (cgoDoubleEmpty / Math.max(1, cgoSingleEmpty + cgoDoubleEmpty)));
-  const cgoSimples = cgoDisponibles - cgoDobles;
-  const cgoPct = master.CGO.total > 0 ? (cgoOcupadas / master.CGO.total) * 100 : 0;
-
-  // PBK (Push Back) - Total 2881
-  // Simples vacías: 406, Dobles vacías: 29, Ubicaciones disponibles: 435, Ocupadas: 2446 -> 84,90%
-  const pbkOcupadas = isBaseline ? 2446 : Math.min(master.PBK.total, occupiedByTipo.PBK);
-  const pbkDisponibles = Math.max(0, master.PBK.total - pbkOcupadas);
-  const pbkDobles = isBaseline ? 29 : Math.round(pbkDisponibles * (pbkDoubleEmpty / Math.max(1, pbkSingleEmpty + pbkDoubleEmpty)));
-  const pbkSimples = pbkDisponibles - pbkDobles;
-  const pbkPct = master.PBK.total > 0 ? (pbkOcupadas / master.PBK.total) * 100 : 0;
-
-  // PFW (Post Forward) - Total 682
-  // Simples vacías: 12, Dobles vacías: 19, Ubicaciones disponibles: 31, Ocupadas: 651 -> 95,45%
-  const pfwOcupadas = isBaseline ? 651 : Math.min(master.PFW.total, occupiedByTipo.PFW);
-  const pfwDisponibles = Math.max(0, master.PFW.total - pfwOcupadas);
-  const pfwDobles = isBaseline ? 19 : 0;
-  const pfwSimples = pfwDisponibles - pfwDobles;
-  const pfwPct = master.PFW.total > 0 ? (pfwOcupadas / master.PFW.total) * 100 : 0;
-
-  // RCK (Producto Crítico) - Total 506
-  // Simples vacías: 4, Dobles vacías: 0, Ubicaciones disponibles: 4, Ocupadas: 502 -> 99,21%
-  const rckOcupadas = isBaseline ? 502 : Math.min(master.RCK.total, occupiedByTipo.RCK);
-  const rckDisponibles = Math.max(0, master.RCK.total - rckOcupadas);
-  const rckSimples = rckDisponibles;
-  const rckDobles = 0;
-  const rckPct = master.RCK.total > 0 ? (rckOcupadas / master.RCK.total) * 100 : 0;
-
-  const rowCGO: ExcelPivotRow = {
-    tipo: 'CGO',
-    nombre: 'CGO - Cámara Congelado',
-    simplesVacias: cgoSimples,
-    doblesVacias: cgoDobles,
-    triplesVacias: 0,
-    total: master.CGO.total,
-    ocupadas: cgoOcupadas,
-    disponibles: cgoDisponibles,
-    pctOcupacion: Math.round(cgoPct * 100) / 100,
+    return {
+      tipo,
+      nombre: master[tipo].name,
+      simplesVacias: sVac,
+      doblesVacias: dVac,
+      triplesVacias: tVac,
+      total,
+      ocupadas,
+      disponibles,
+      pctOcupacion,
+    };
   };
 
-  const rowPBK: ExcelPivotRow = {
-    tipo: 'PBK',
-    nombre: 'PBK - Push Back',
-    simplesVacias: pbkSimples,
-    doblesVacias: pbkDobles,
-    triplesVacias: 0,
-    total: master.PBK.total,
-    ocupadas: pbkOcupadas,
-    disponibles: pbkDisponibles,
-    pctOcupacion: Math.round(pbkPct * 100) / 100,
-  };
-
-  const rowPFW: ExcelPivotRow = {
-    tipo: 'PFW',
-    nombre: 'PFW - Post Forward',
-    simplesVacias: pfwSimples,
-    doblesVacias: pfwDobles,
-    triplesVacias: 0,
-    total: master.PFW.total,
-    ocupadas: pfwOcupadas,
-    disponibles: pfwDisponibles,
-    pctOcupacion: Math.round(pfwPct * 100) / 100,
-  };
-
-  const rowRCK: ExcelPivotRow = {
-    tipo: 'RCK',
-    nombre: 'RCK - Producto Crítico',
-    simplesVacias: rckSimples,
-    doblesVacias: rckDobles,
-    triplesVacias: 0,
-    total: master.RCK.total,
-    ocupadas: rckOcupadas,
-    disponibles: rckDisponibles,
-    pctOcupacion: Math.round(rckPct * 100) / 100,
-  };
+  const rowCGO = buildRow('CGO');
+  const rowPBK = buildRow('PBK');
+  const rowPFW = buildRow('PFW');
+  const rowRCK = buildRow('RCK');
 
   const totTotal = rowCGO.total + rowPBK.total + rowPFW.total + rowRCK.total;
-  const totOcupadas = rowCGO.ocupadas + rowPBK.ocupadas + rowPFW.ocupadas + rowRCK.ocupadas;
   const totDisponibles = rowCGO.disponibles + rowPBK.disponibles + rowPFW.disponibles + rowRCK.disponibles;
+  const totOcupadas = rowCGO.ocupadas + rowPBK.ocupadas + rowPFW.ocupadas + rowRCK.ocupadas;
   const totSimples = rowCGO.simplesVacias + rowPBK.simplesVacias + rowPFW.simplesVacias + rowRCK.simplesVacias;
   const totDobles = rowCGO.doblesVacias + rowPBK.doblesVacias + rowPFW.doblesVacias + rowRCK.doblesVacias;
-  const totPct = totTotal > 0 ? (totOcupadas / totTotal) * 100 : 0;
+  const totTriples = rowCGO.triplesVacias + rowPBK.triplesVacias + rowPFW.triplesVacias + rowRCK.triplesVacias;
+  const totPct = totTotal > 0 ? Math.round(((totOcupadas / totTotal) * 100) * 100) / 100 : 0;
 
   const totalRow: ExcelPivotRow = {
     tipo: 'TOTAL',
     nombre: 'Total General',
     simplesVacias: totSimples,
     doblesVacias: totDobles,
-    triplesVacias: 0,
+    triplesVacias: totTriples,
     total: totTotal,
     ocupadas: totOcupadas,
     disponibles: totDisponibles,
-    pctOcupacion: Math.round(totPct * 100) / 100,
+    pctOcupacion: totPct,
   };
 
   const refTotal = rowPBK.total + rowPFW.total + rowRCK.total;
-  const refOcupadas = rowPBK.ocupadas + rowPFW.ocupadas + rowRCK.ocupadas;
   const refDisponibles = rowPBK.disponibles + rowPFW.disponibles + rowRCK.disponibles;
-  const refPct = refTotal > 0 ? (refOcupadas / refTotal) * 100 : 0;
+  const refOcupadas = rowPBK.ocupadas + rowPFW.ocupadas + rowRCK.ocupadas;
+  const refPct = refTotal > 0 ? Math.round(((refOcupadas / refTotal) * 100) * 100) / 100 : 0;
 
   return {
     rows: [rowCGO, rowPBK, rowPFW, rowRCK],
@@ -587,7 +625,7 @@ export function calculateExcelPivotSummary(
       total: refTotal,
       ocupadas: refOcupadas,
       disponibles: refDisponibles,
-      pctOcupacion: Math.round(refPct * 100) / 100,
+      pctOcupacion: refPct,
       simplesVacias: rowPBK.simplesVacias + rowPFW.simplesVacias + rowRCK.simplesVacias,
       doblesVacias: rowPBK.doblesVacias + rowPFW.doblesVacias + rowRCK.doblesVacias,
     },
@@ -595,7 +633,7 @@ export function calculateExcelPivotSummary(
       total: totTotal,
       ocupadas: totOcupadas,
       disponibles: totDisponibles,
-      pctOcupacion: Math.round(totPct * 100) / 100,
+      pctOcupacion: totPct,
       simplesVacias: totSimples,
       doblesVacias: totDobles,
     },
