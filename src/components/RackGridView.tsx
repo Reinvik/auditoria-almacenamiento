@@ -8,7 +8,9 @@ import {
   Minimize2, 
   ChevronLeft, 
   ChevronRight, 
-  ArrowLeftRight 
+  ArrowLeftRight,
+  Smartphone,
+  MoveHorizontal
 } from 'lucide-react';
 
 interface RackGridViewProps {
@@ -58,6 +60,26 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
 }) => {
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const query = searchQuery.trim().toLowerCase();
+
+  // Modo de ancho en pantalla completa: Ajustar al 100% de la pantalla del celular o Scroll horizontal amplio
+  const [fitWidth, setFitWidth] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('nexus_rack_fit_width');
+      if (saved !== null) return saved === 'true';
+      return window.innerWidth < 768;
+    } catch {
+      return true;
+    }
+  });
+
+  const handleFitWidthToggle = (fit: boolean) => {
+    setFitWidth(fit);
+    try {
+      localStorage.setItem('nexus_rack_fit_width', String(fit));
+    } catch {
+      // Ignorado
+    }
+  };
 
   // Control nativo de pantalla completa con fallback CSS total para móviles (iOS Safari / Android)
   const toggleFullScreen = async () => {
@@ -118,34 +140,34 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
   };
 
   // Render audit badge on top of slot with exact difference (FALTA 1/2, FALTA 2/2)
-  const renderAuditBadge = (slot: SlotData) => {
+  const renderAuditBadge = (slot: SlotData, compact: boolean = false) => {
     const finding = auditFindings.get(slot.ubicacion);
     if (!finding) return null;
 
     if (finding.discrepancyType === 'NONE') {
       return (
-        <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] shadow-sm">
-          <Check className="w-2.5 h-2.5 stroke-[3]" />
+        <span className={`absolute top-0.5 right-0.5 ${compact ? 'w-3 h-3' : 'w-4 h-4'} rounded-full bg-emerald-500 text-white flex items-center justify-center text-[9px] shadow-sm`}>
+          <Check className={`${compact ? 'w-2 h-2' : 'w-2.5 h-2.5'} stroke-[3]`} />
         </span>
       );
     }
     if (finding.discrepancyType === 'FALTA_FISICA') {
       return (
-        <span className="absolute top-1 right-1 px-1.5 py-0.2 rounded bg-rose-600 text-white flex items-center gap-0.5 text-[9px] font-black shadow-sm tracking-tighter">
-          {finding.badgeLabel || 'FALTA'}
+        <span className={`absolute top-0.5 right-0.5 ${compact ? 'px-1 py-0 text-[7.5px] leading-tight' : 'px-1.5 py-0.2 text-[9px]'} rounded bg-rose-600 text-white flex items-center gap-0.5 font-black shadow-sm tracking-tighter`}>
+          {compact ? (finding.badgeLabel?.replace('FALTA', 'F.') || 'F') : (finding.badgeLabel || 'FALTA')}
         </span>
       );
     }
     if (finding.discrepancyType === 'SOBRA_FISICA') {
       return (
-        <span className="absolute top-1 right-1 px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 flex items-center gap-0.5 text-[9px] font-black shadow-sm tracking-tighter">
-          {finding.badgeLabel || 'SOBRA'}
+        <span className={`absolute top-0.5 right-0.5 ${compact ? 'px-1 py-0 text-[7.5px] leading-tight' : 'px-1.5 py-0.2 text-[9px]'} rounded bg-amber-500 text-slate-950 flex items-center gap-0.5 font-black shadow-sm tracking-tighter`}>
+          {compact ? (finding.badgeLabel?.replace('SOBRA', 'S.') || 'S') : (finding.badgeLabel || 'SOBRA')}
         </span>
       );
     }
     return (
-      <span className="absolute top-1 right-1 px-1.5 py-0.2 rounded bg-blue-600 text-white flex items-center gap-0.5 text-[9px] font-black shadow-sm tracking-tighter">
-        {finding.badgeLabel || 'DIF'}
+      <span className={`absolute top-0.5 right-0.5 ${compact ? 'px-1 py-0 text-[7.5px] leading-tight' : 'px-1.5 py-0.2 text-[9px]'} rounded bg-blue-600 text-white flex items-center gap-0.5 font-black shadow-sm tracking-tighter`}>
+        {compact ? (finding.badgeLabel?.replace('DIF', 'D.') || 'D') : (finding.badgeLabel || 'DIF')}
       </span>
     );
   };
@@ -153,20 +175,32 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
   // ══════════════════════════════════════════════════════════════════════════
   // RENDER DE LA TABLA EXCEL OFICIAL CIAL (REUTILIZABLE PARA NORMAL Y FULLSCREEN)
   // ══════════════════════════════════════════════════════════════════════════
-  const renderExcelTable = (isFs: boolean = false) => (
-    <table className={`border-collapse text-center select-none w-full table-fixed ${isFs ? 'min-w-[650px]' : 'min-w-[700px]'}`}>
+  const renderExcelTable = (isFs: boolean = false, fit: boolean = false) => (
+    <table className={`border-collapse text-center select-none w-full table-fixed ${fit ? 'min-w-0 max-w-full' : (isFs ? 'min-w-[680px]' : 'min-w-[700px]')}`}>
       {/* Encabezado negro idéntico a Excel - Sticky top */}
       <thead>
         <tr className="bg-black text-white font-black text-sm tracking-wider sticky top-0 z-20 shadow-md">
-          <th className="border border-slate-700 px-2 sm:px-4 py-3 text-base w-[10%] bg-white text-black font-black sticky left-0 z-30 shadow-xs">
+          <th className={`border border-slate-700 ${fit ? 'w-[13%] px-0.5 py-1.5 text-[10px] sm:text-xs' : 'w-[10%] px-2 sm:px-4 py-3 text-base'} bg-white text-black font-black sticky left-0 z-30 shadow-xs`}>
             {rack.id}
           </th>
-          <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[15%] text-white text-xs sm:text-sm">Nivel 6</th>
-          <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[15%] text-white text-xs sm:text-sm">Nivel 5</th>
-          <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[15%] text-white text-xs sm:text-sm">Nivel 4</th>
-          <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[15%] text-white text-xs sm:text-sm">Nivel 3</th>
-          <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[15%] text-white text-xs sm:text-sm">Nivel 2</th>
-          <th className="border border-slate-700 px-2 sm:px-3 py-3 w-[15%] text-white text-xs sm:text-sm">Nivel 1</th>
+          <th className={`border border-slate-700 ${fit ? 'w-[14.5%] px-0.5 py-1.5 text-[10px] sm:text-xs' : 'w-[15%] px-2 sm:px-3 py-3 text-xs sm:text-sm'} text-white`}>
+            {fit ? 'N.6' : 'Nivel 6'}
+          </th>
+          <th className={`border border-slate-700 ${fit ? 'w-[14.5%] px-0.5 py-1.5 text-[10px] sm:text-xs' : 'w-[15%] px-2 sm:px-3 py-3 text-xs sm:text-sm'} text-white`}>
+            {fit ? 'N.5' : 'Nivel 5'}
+          </th>
+          <th className={`border border-slate-700 ${fit ? 'w-[14.5%] px-0.5 py-1.5 text-[10px] sm:text-xs' : 'w-[15%] px-2 sm:px-3 py-3 text-xs sm:text-sm'} text-white`}>
+            {fit ? 'N.4' : 'Nivel 4'}
+          </th>
+          <th className={`border border-slate-700 ${fit ? 'w-[14.5%] px-0.5 py-1.5 text-[10px] sm:text-xs' : 'w-[15%] px-2 sm:px-3 py-3 text-xs sm:text-sm'} text-white`}>
+            {fit ? 'N.3' : 'Nivel 3'}
+          </th>
+          <th className={`border border-slate-700 ${fit ? 'w-[14.5%] px-0.5 py-1.5 text-[10px] sm:text-xs' : 'w-[15%] px-2 sm:px-3 py-3 text-xs sm:text-sm'} text-white`}>
+            {fit ? 'N.2' : 'Nivel 2'}
+          </th>
+          <th className={`border border-slate-700 ${fit ? 'w-[14.5%] px-0.5 py-1.5 text-[10px] sm:text-xs' : 'w-[15%] px-2 sm:px-3 py-3 text-xs sm:text-sm'} text-white`}>
+            {fit ? 'N.1' : 'Nivel 1'}
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -175,7 +209,7 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
           return (
             <tr key={moduloCode} className="hover:bg-slate-50 transition-colors">
               {/* Código de Módulo (ej: 00801) - Sticky left */}
-              <td className="border border-slate-400 bg-white text-black font-black text-xs sm:text-sm py-2 px-2 sm:px-3 tracking-wide select-text sticky left-0 z-10 shadow-xs">
+              <td className={`border border-slate-400 bg-white text-black font-black ${fit ? 'text-[9.5px] sm:text-xs px-0.5 py-1' : 'text-xs sm:text-sm py-2 px-2 sm:px-3'} tracking-tight select-text sticky left-0 z-10 shadow-xs overflow-hidden text-ellipsis`}>
                 {moduloCode}
               </td>
 
@@ -189,13 +223,19 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
 
                 if (searchMatch) {
                   cellClass = 'bg-amber-100 text-amber-950 hover:bg-amber-200 border-amber-400 active:scale-98 shadow-md';
-                  textClass = 'font-black text-xs sm:text-base tracking-tight text-amber-950 underline decoration-amber-500 decoration-2';
+                  textClass = fit 
+                    ? 'font-black text-[9.5px] sm:text-xs tracking-tighter text-amber-950 underline decoration-amber-500 truncate max-w-full' 
+                    : 'font-black text-xs sm:text-base tracking-tight text-amber-950 underline decoration-amber-500 decoration-2';
                 } else if (slot.isEmpty) {
                   cellClass = 'bg-black text-white hover:bg-slate-900 border-slate-700 active:scale-98';
-                  textClass = 'font-bold text-xs sm:text-sm tracking-wider';
+                  textClass = fit 
+                    ? 'font-bold text-[9px] sm:text-xs tracking-tight truncate max-w-full' 
+                    : 'font-bold text-xs sm:text-sm tracking-wider';
                 } else {
                   cellClass = 'bg-white text-black hover:bg-emerald-50/60 border-slate-400 shadow-2xs active:scale-98';
-                  textClass = 'font-extrabold text-xs sm:text-sm tracking-tight';
+                  textClass = fit 
+                    ? 'font-extrabold text-[9.5px] sm:text-xs tracking-tight truncate max-w-full' 
+                    : 'font-extrabold text-xs sm:text-sm tracking-tight';
                 }
 
                 // Si hay búsqueda activa, atenuar las celdas que no coinciden
@@ -215,25 +255,25 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
                     key={slot.ubicacion}
                     onClick={() => onSlotClick(slot)}
                     title={`${slot.ubicacion} • ${slot.isEmpty ? 'Vacío' : `${slot.displayText} - ${slot.items[0]?.descripcion || ''}`}`}
-                    className={`relative border ${isFs ? 'py-2 sm:py-3 px-1.5' : 'py-3 sm:py-3.5 px-2'} cursor-pointer transition-all duration-150 select-none ${cellClass} ${opacityClass} ${highlightClass}`}
+                    className={`relative border ${fit ? 'py-1 px-0.5' : (isFs ? 'py-2 sm:py-3 px-1.5' : 'py-3 sm:py-3.5 px-2')} cursor-pointer transition-all duration-150 select-none overflow-hidden ${cellClass} ${opacityClass} ${highlightClass}`}
                   >
-                    <div className={`flex flex-col items-center justify-center ${isFs ? 'min-h-[34px] sm:min-h-[42px]' : 'min-h-[38px] sm:min-h-[46px]'}`}>
+                    <div className={`flex flex-col items-center justify-center ${fit ? 'min-h-[28px] sm:min-h-[36px]' : (isFs ? 'min-h-[34px] sm:min-h-[42px]' : 'min-h-[38px] sm:min-h-[46px]')}`}>
                       {searchMatch && (
-                        <span className="px-1 py-0.2 rounded bg-amber-400 text-slate-950 font-black text-[9px] uppercase tracking-wider mb-0.5">
-                          COINCIDENCIA
+                        <span className={`px-1 py-0.2 rounded bg-amber-400 text-slate-950 font-black uppercase tracking-wider mb-0.5 ${fit ? 'text-[7px]' : 'text-[9px]'}`}>
+                          {fit ? 'COINC' : 'COINCIDENCIA'}
                         </span>
                       )}
                       <span className={textClass}>
                         {slot.displayText}
                       </span>
                       {slot.hasTransfer && (
-                        <span className="text-[9px] font-black text-amber-600 uppercase tracking-tighter mt-0.5">
-                          TRANSF
+                        <span className={`font-black text-amber-600 uppercase tracking-tighter mt-0.5 ${fit ? 'text-[7px]' : 'text-[9px]'}`}>
+                          {fit ? 'TR' : 'TRANSF'}
                         </span>
                       )}
                     </div>
 
-                    {renderAuditBadge(slot)}
+                    {renderAuditBadge(slot, fit)}
                   </td>
                 );
               })}
@@ -254,32 +294,59 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
       <div className="fixed inset-0 z-[60] bg-slate-950 flex flex-col w-screen h-screen h-[100dvh] overflow-hidden select-none animate-in fade-in duration-150">
         {/* Barra Superior Compacta */}
         <div className="bg-slate-900 border-b border-slate-800 px-2 sm:px-4 py-2 flex items-center justify-between gap-2 shrink-0 text-white shadow-md">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
             <button
               onClick={toggleFullScreen}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs active:scale-95 transition-all cursor-pointer shrink-0 shadow-sm"
               title="Salir de pantalla completa"
             >
               <Minimize2 className="w-4 h-4 stroke-[2.5]" />
-              <span>Salir</span>
+              <span className="hidden xs:inline">Salir</span>
             </button>
 
-            <div className="flex items-center gap-1.5 truncate">
+            <div className="flex items-center gap-1 sm:gap-1.5 truncate">
               <span className="bg-[#0a5c36] text-white font-black text-xs px-2 py-0.5 rounded-lg shrink-0">
                 {rack.sheet}
               </span>
-              <span className="font-bold text-xs text-slate-200 truncate">
+              <span className="font-bold text-xs text-slate-200 truncate hidden xs:inline">
                 {rack.name}
-              </span>
-              <span className="text-[10px] text-slate-400 hidden sm:inline">
-                ({rack.moduleCount} mód)
               </span>
             </div>
           </div>
 
+          {/* Control selector de Ancho: Ajustar al Móvil o Scroll Horizontal Libre */}
+          <div className="flex items-center bg-slate-800 p-0.5 rounded-xl border border-slate-700 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleFitWidthToggle(true)}
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                fitWidth
+                  ? 'bg-amber-500 text-slate-950 shadow-xs font-black'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+              }`}
+              title="Ajustar todas las columnas al ancho del celular"
+            >
+              <Smartphone className="w-3.5 h-3.5 shrink-0" />
+              <span className="text-[11px]">Ajustar</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleFitWidthToggle(false)}
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                !fitWidth
+                  ? 'bg-amber-500 text-slate-950 shadow-xs font-black'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+              }`}
+              title="Permitir scroll horizontal amplio en el eje X"
+            >
+              <MoveHorizontal className="w-3.5 h-3.5 shrink-0" />
+              <span className="text-[11px]">Scroll X</span>
+            </button>
+          </div>
+
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {currentAisleName && (
-              <span className="text-[11px] font-black text-emerald-300 bg-emerald-950/80 border border-emerald-700/60 px-2 py-0.5 rounded-lg truncate max-w-[130px] sm:max-w-none">
+              <span className="text-[11px] font-black text-emerald-300 bg-emerald-950/80 border border-emerald-700/60 px-2 py-0.5 rounded-lg truncate max-w-[90px] sm:max-w-[140px]">
                 {currentAisleName.split('(')[0].trim()}
               </span>
             )}
@@ -291,7 +358,8 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
                 title={`Cambiar a cara opuesta: Rack ${oppositeRackId}`}
               >
                 <ArrowLeftRight className="w-3.5 h-3.5" />
-                <span>Cara R{oppositeRackId}</span>
+                <span className="hidden sm:inline">Cara R{oppositeRackId}</span>
+                <span className="sm:hidden">R{oppositeRackId}</span>
               </button>
             )}
 
@@ -314,10 +382,26 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
           </div>
         </div>
 
+        {/* Banner de ayuda visual al activar Scroll Horizontal */}
+        {!fitWidth && (
+          <div className="bg-amber-500/15 border-b border-amber-500/30 px-3 py-1 flex items-center justify-between text-amber-300 text-[10px] sm:text-xs font-semibold shrink-0">
+            <div className="flex items-center gap-1.5">
+              <MoveHorizontal className="w-3 h-3 text-amber-400 animate-pulse shrink-0" />
+              <span>Desliza horizontalmente (eje X) para recorrer todos los niveles</span>
+            </div>
+            <button
+              onClick={() => handleFitWidthToggle(true)}
+              className="underline text-amber-200 hover:text-white ml-2 text-[10px] font-bold shrink-0 cursor-pointer"
+            >
+              ¿Ajustar a pantalla?
+            </button>
+          </div>
+        )}
+
         {/* Área de la Hoja de Rack: 100% de la pantalla táctil */}
-        <div className="flex-1 overflow-auto bg-slate-200 p-1 sm:p-3 touch-pan-x touch-pan-y min-h-0">
-          <div className="bg-white rounded-xl shadow-md border border-slate-300 overflow-hidden w-full">
-            {renderExcelTable(true)}
+        <div className={`flex-1 ${fitWidth ? 'overflow-y-auto overflow-x-hidden' : 'overflow-x-auto overflow-y-auto'} bg-slate-200 p-1 sm:p-3 touch-pan-x touch-pan-y min-h-0`}>
+          <div className={`bg-white rounded-xl shadow-md border border-slate-300 ${fitWidth ? 'w-full overflow-hidden' : 'inline-block min-w-full align-middle'}`}>
+            {renderExcelTable(true, fitWidth)}
           </div>
         </div>
 
@@ -468,8 +552,8 @@ export const RackGridView: React.FC<RackGridViewProps> = ({
               </div>
             </div>
 
-            <div className="bg-white p-2 sm:p-4 rounded-2xl shadow-sm border border-slate-200 w-full">
-              {renderExcelTable(false)}
+            <div className="bg-white p-2 sm:p-4 rounded-2xl shadow-sm border border-slate-200 inline-block min-w-full align-middle">
+              {renderExcelTable(false, false)}
             </div>
           </div>
         </div>
