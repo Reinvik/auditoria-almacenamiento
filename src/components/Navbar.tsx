@@ -107,7 +107,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </span>
                 )}
                 {syncStatus === 'syncing' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.2 rounded-full text-[9.5px] font-black bg-sky-950/70 text-sky-300 border border-sky-400/40 shadow-xs" title="Sincronizando cambios con Supabase...">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.2 rounded-full text-[9.5px] font-black bg-sky-950/70 text-sky-300 border border-sky-400/40 shadow-xs" title="Sincronizando cambios en la nube...">
                     <RefreshCw className="w-3 h-3 text-sky-300 animate-spin" />
                     <span>Sincronizando...</span>
                   </span>

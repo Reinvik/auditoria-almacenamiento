@@ -89,25 +89,29 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
         const localData = getOccupancyHistory();
 
         if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
-          // Si el navegador actual tiene fechas nuevas (ej. 15-sept o 16-sept) que aún no estaban en la nube,
-          // combinamos ambos sin perder nada y actualizamos Supabase.
+          // Si el navegador actual tiene fechas nuevas que aún no estaban en la nube,
+          // combinamos ambos sin perder nada y mantenemos las últimas 15 fechas
           const merged = mergeOccupancyHistories(cloudData, localData);
-          setHistory(merged);
-          saveOccupancyHistory(merged);
+          const limited = merged.length > 15 ? merged.slice(-15) : merged;
+          setHistory(limited);
+          saveOccupancyHistory(limited);
           setSyncStatus('synced');
 
-          if (merged.length > cloudData.length) {
-            await saveOccupancyHistoryToSupabase(merged);
+          if (merged.length !== limited.length || merged.length > cloudData.length) {
+            await saveOccupancyHistoryToSupabase(limited);
           }
         } else {
-          // Si la nube aún no tiene registros, inicializarla con el historial local
+          // Si la nube aún no tiene registros, inicializarla con el historial local (máx 15)
           if (localData && localData.length > 0) {
-            await saveOccupancyHistoryToSupabase(localData);
+            const limited = localData.length > 15 ? localData.slice(-15) : localData;
+            setHistory(limited);
+            saveOccupancyHistory(limited);
+            await saveOccupancyHistoryToSupabase(limited);
           }
           setSyncStatus('synced');
         }
       } catch (err) {
-        console.warn('Error al sincronizar historial con Supabase:', err);
+        console.warn('Error al sincronizar historial con la nube:', err);
         if (isMounted) setSyncStatus('error');
       }
     }
@@ -120,8 +124,9 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
       if (Array.isArray(newRemoteHistory) && newRemoteHistory.length > 0) {
         setHistory(prev => {
           const merged = mergeOccupancyHistories(prev, newRemoteHistory);
-          saveOccupancyHistory(merged);
-          return merged;
+          const limited = merged.length > 15 ? merged.slice(-15) : merged;
+          saveOccupancyHistory(limited);
+          return limited;
         });
         setSyncStatus('synced');
       }
@@ -141,13 +146,17 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
       const localData = getOccupancyHistory();
       if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
         const merged = mergeOccupancyHistories(cloudData, localData);
-        setHistory(merged);
-        saveOccupancyHistory(merged);
-        if (merged.length > cloudData.length) {
-          await saveOccupancyHistoryToSupabase(merged);
+        const limited = merged.length > 15 ? merged.slice(-15) : merged;
+        setHistory(limited);
+        saveOccupancyHistory(limited);
+        if (merged.length !== limited.length || merged.length > cloudData.length) {
+          await saveOccupancyHistoryToSupabase(limited);
         }
       } else if (localData.length > 0) {
-        await saveOccupancyHistoryToSupabase(localData);
+        const limited = localData.length > 15 ? localData.slice(-15) : localData;
+        setHistory(limited);
+        saveOccupancyHistory(limited);
+        await saveOccupancyHistoryToSupabase(limited);
       }
       setSyncStatus('synced');
     } catch {
@@ -233,24 +242,30 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
       updated = [...history, newPoint];
     }
 
+    // Mantener las últimas 15 fechas en el historial
+    if (updated.length > 15) {
+      updated = updated.slice(-15);
+    }
+
     setHistory(updated);
     saveOccupancyHistory(updated);
     setSavedFeedback(true);
     setTimeout(() => setSavedFeedback(false), 3000);
 
-    // Persistencia inmediata en Supabase compartida con todos los navegadores/PCs
+    // Persistencia inmediata en la nube compartida con todos los navegadores/PCs
     setSyncStatus('syncing');
     const ok = await saveOccupancyHistoryToSupabase(updated);
     setSyncStatus(ok ? 'synced' : 'error');
   };
 
-  // Restablecer al historial oficial inicial
+  // Restablecer al historial oficial inicial (últimas 15 fechas)
   const handleResetHistory = async () => {
-    if (window.confirm('¿Deseas restablecer el historial a los datos oficiales de agosto/septiembre en todos los PCs?')) {
-      setHistory(INITIAL_OCCUPANCY_HISTORY);
-      saveOccupancyHistory(INITIAL_OCCUPANCY_HISTORY);
+    if (window.confirm('¿Deseas restablecer el historial a las últimas 15 fechas oficiales en todos los PCs?')) {
+      const resetSeries = INITIAL_OCCUPANCY_HISTORY.slice(-15);
+      setHistory(resetSeries);
+      saveOccupancyHistory(resetSeries);
       setSyncStatus('syncing');
-      const ok = await saveOccupancyHistoryToSupabase(INITIAL_OCCUPANCY_HISTORY);
+      const ok = await saveOccupancyHistoryToSupabase(resetSeries);
       setSyncStatus(ok ? 'synced' : 'error');
     }
   };
@@ -267,9 +282,10 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
 
   // ══════════════════════════════════════════════════════════════════════════
   // DIMENSIONES Y MATEMÁTICAS DEL GRÁFICO SVG
-  // Ancho dinámico con mínimo 58px por punto para que nunca colisionen fechas ni números
-  const pointsCount = history.length;
-  const minPointSpacing = 58;
+  // El gráfico mantiene estrictamente las últimas 15 fechas registradas con espaciado amplio
+  const chartHistory = history.slice(-15);
+  const pointsCount = chartHistory.length;
+  const minPointSpacing = 65;
   const paddingLeft = 70;
   const paddingRight = 55;
   const paddingTop = 50;
@@ -306,12 +322,12 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
     return h.operativoRefrigeradoPct ?? h.refrigeradoPct;
   };
 
-  // Puntos para líneas SVG
-  const congeladosPolyline = history
+  // Puntos para líneas SVG basados en las últimas 15 fechas
+  const congeladosPolyline = chartHistory
     .map((h, i) => `${getX(i)},${getY(getPointCongeladoPct(h))}`)
     .join(' ');
 
-  const refrigeradosPolyline = history
+  const refrigeradosPolyline = chartHistory
     .map((h, i) => `${getX(i)},${getY(getPointRefrigeradoPct(h))}`)
     .join(' ');
 
@@ -369,7 +385,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
             </select>
           </div>
 
-          {/* Botón e Indicador de Sincronización en la Nube (Supabase) */}
+          {/* Botón e Indicador de Sincronización en la Nube */}
           <button
             type="button"
             onClick={handleManualSync}
@@ -383,7 +399,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                 ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
                 : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
             }`}
-            title="Historial compartido en tiempo real con Supabase. Clic para sincronizar ahora."
+            title="Historial compartido en tiempo real en la nube. Clic para sincronizar ahora."
           >
             {syncStatus === 'syncing' ? (
               <>
@@ -393,7 +409,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
             ) : syncStatus === 'synced' ? (
               <>
                 <Cloud className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Nube ({history.length} fechas)</span>
+                <span>Nube ({chartHistory.length} fechas)</span>
               </>
             ) : syncStatus === 'error' ? (
               <>
@@ -425,7 +441,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                 ? 'bg-emerald-600 text-white' 
                 : 'bg-[#0a5c36] hover:bg-[#08482a] text-white'
             }`}
-            title="Registrar la ocupación calculada de hoy y sincronizarla en Supabase para todos los computadores"
+            title="Registrar la ocupación calculada de hoy y sincronizarla en la nube para todos los computadores"
           >
             {savedFeedback ? (
               <>
@@ -1053,7 +1069,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-100">
           <div className="flex items-center gap-2">
             <span className="text-xs font-black text-slate-800 uppercase tracking-wide">
-              Evolución Histórica de Ocupación ({history.length} fechas registradas)
+              Evolución Histórica de Ocupación ({chartHistory.length} fechas registradas)
             </span>
           </div>
 
@@ -1106,7 +1122,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                 fill="#1e293b"
                 letterSpacing="0.04em"
               >
-                EVOLUCIÓN HISTÓRICA DE OCUPACIÓN ({history.length} FECHAS REGISTRADAS)
+                EVOLUCIÓN HISTÓRICA DE OCUPACIÓN ({chartHistory.length} FECHAS REGISTRADAS)
               </text>
 
               {/* Leyenda en la imagen exportada */}
@@ -1183,7 +1199,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                     points={congeladosPolyline}
                   />
                   {/* Puntos y Etiquetas CONGELADOS */}
-                  {history.map((h, i) => {
+                  {chartHistory.map((h, i) => {
                     const x = getX(i);
                     const y = getY(getPointCongeladoPct(h));
                     const isHovered = hoveredPoint?.id === h.id;
@@ -1230,7 +1246,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                     points={refrigeradosPolyline}
                   />
                   {/* Puntos y Etiquetas REFRIGERADOS */}
-                  {history.map((h, i) => {
+                  {chartHistory.map((h, i) => {
                     const x = getX(i);
                     const y = getY(getPointRefrigeradoPct(h));
                     const isHovered = hoveredPoint?.id === h.id;
@@ -1266,7 +1282,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
               )}
 
               {/* Etiquetas Eje X (Fechas inclinadas anti-colisión con guía vertical) */}
-              {history.map((h, i) => {
+              {chartHistory.map((h, i) => {
                 const x = getX(i);
                 const yAxis = svgHeight - paddingBottom;
                 return (
@@ -1315,7 +1331,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
         {/* Acciones del Historial */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
           <div className="text-slate-500 font-medium">
-            ☁️ <em>Sincronizado en tiempo real con Supabase. Las fotos de ocupación guardadas son visibles de inmediato en todos los computadores y navegadores.</em>
+            ☁️ <em>Sincronizado en tiempo real en la nube. Las fotos de ocupación guardadas son visibles de inmediato en todos los computadores y navegadores.</em>
           </div>
 
           <div className="flex items-center gap-2">
@@ -1434,7 +1450,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
         isOpen={isEmailModalOpen}
         onClose={() => setIsEmailModalOpen(false)}
         svgElement={svgRef.current}
-        lastDateLabel={history[history.length - 1]?.date}
+        lastDateLabel={chartHistory[chartHistory.length - 1]?.date}
       />
     </div>
   );
