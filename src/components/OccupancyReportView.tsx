@@ -331,6 +331,56 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
     .map((h, i) => `${getX(i)},${getY(getPointRefrigeradoPct(h))}`)
     .join(' ');
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // POSICIONAMIENTO INTELIGENTE ANTI-COLISIÓN DE ETIQUETAS DE PORCENTAJE
+  // Garantiza que cuando las líneas se crucen o estén cerca, las etiquetas
+  // apunten siempre en direcciones opuestas hacia afuera (arriba/abajo),
+  // manteniendo una separación vertical mínima de 28px con halo protector blanco.
+  const getSmartLabelPosition = (
+    index: number,
+    series: 'CONGELADOS' | 'REFRIGERADOS'
+  ): { yText: number; isTop: boolean } => {
+    const h = chartHistory[index];
+    const cgoPct = getPointCongeladoPct(h);
+    const refPct = getPointRefrigeradoPct(h);
+
+    const yCgo = getY(cgoPct);
+    const yRef = getY(refPct);
+
+    // Si solo se muestra una serie individual
+    if (selectedFilter === 'CONGELADOS') {
+      const isNearTop = yCgo < paddingTop + 20;
+      return { yText: isNearTop ? yCgo + 16 : yCgo - 10, isTop: !isNearTop };
+    }
+    if (selectedFilter === 'REFRIGERADOS') {
+      const isNearTop = yRef < paddingTop + 20;
+      return { yText: isNearTop ? yRef + 16 : yRef - 10, isTop: !isNearTop };
+    }
+
+    // Ambas series visibles: la serie con mayor % (menor Y en SVG) va ARRIBA,
+    // y la serie con menor % va ABAJO. Así se separan siempre en sentidos contrarios.
+    const isCongeladoTop = cgoPct >= refPct;
+
+    if (series === 'CONGELADOS') {
+      if (isCongeladoTop) {
+        // Congelados está arriba (o empatado): etiqueta ARRIBA del punto
+        return { yText: yCgo - 11, isTop: true };
+      } else {
+        // Congelados está abajo: etiqueta ABAJO del punto
+        return { yText: yCgo + 17, isTop: false };
+      }
+    } else {
+      // REFRIGERADOS
+      if (!isCongeladoTop) {
+        // Refrigerados está arriba: etiqueta ARRIBA del punto
+        return { yText: yRef - 11, isTop: true };
+      } else {
+        // Refrigerados está abajo: etiqueta ABAJO del punto
+        return { yText: yRef + 17, isTop: false };
+      }
+    }
+  };
+
   return (
     <div className="space-y-6 pb-12 w-full animate-fadeIn select-none">
       {/* 1. CABECERA OFICIAL CIAL (Idéntico a Imagen 2) */}
@@ -1198,11 +1248,12 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                     strokeLinejoin="round"
                     points={congeladosPolyline}
                   />
-                  {/* Puntos y Etiquetas CONGELADOS */}
+                  {/* Puntos y Etiquetas CONGELADOS con posicionamiento inteligente */}
                   {chartHistory.map((h, i) => {
                     const x = getX(i);
                     const y = getY(getPointCongeladoPct(h));
                     const isHovered = hoveredPoint?.id === h.id;
+                    const { yText } = getSmartLabelPosition(i, 'CONGELADOS');
                     return (
                       <g 
                         key={`c_${h.id}`}
@@ -1219,12 +1270,16 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                           strokeWidth={isHovered ? 3.5 : 2.5}
                           className="transition-all"
                         />
-                        {/* Etiqueta de texto debajo del punto como en la Imagen 2 */}
+                        {/* Etiqueta inteligente con halo protector anti-traslape */}
                         <text
                           x={x}
-                          y={y + 16}
+                          y={yText}
                           textAnchor="middle"
-                          className="text-[11px] font-extrabold fill-slate-900 tracking-tight"
+                          paintOrder="stroke"
+                          stroke="#ffffff"
+                          strokeWidth="3.5"
+                          strokeLinejoin="round"
+                          className="text-[11px] font-black fill-[#0e4c68] tracking-tight"
                         >
                           {formatPct(getPointCongeladoPct(h))}
                         </text>
@@ -1245,11 +1300,12 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                     strokeLinejoin="round"
                     points={refrigeradosPolyline}
                   />
-                  {/* Puntos y Etiquetas REFRIGERADOS */}
+                  {/* Puntos y Etiquetas REFRIGERADOS con posicionamiento inteligente */}
                   {chartHistory.map((h, i) => {
                     const x = getX(i);
                     const y = getY(getPointRefrigeradoPct(h));
                     const isHovered = hoveredPoint?.id === h.id;
+                    const { yText } = getSmartLabelPosition(i, 'REFRIGERADOS');
                     return (
                       <g 
                         key={`r_${h.id}`}
@@ -1266,11 +1322,15 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                           strokeWidth={isHovered ? 3.5 : 2.5}
                           className="transition-all"
                         />
-                        {/* Etiqueta de texto arriba del punto como en la Imagen 2 */}
+                        {/* Etiqueta inteligente con halo protector anti-traslape */}
                         <text
                           x={x}
-                          y={y - 10}
+                          y={yText}
                           textAnchor="middle"
+                          paintOrder="stroke"
+                          stroke="#ffffff"
+                          strokeWidth="3.5"
+                          strokeLinejoin="round"
                           className="text-[11px] font-black fill-[#0a5c36] tracking-tight"
                         >
                           {formatPct(getPointRefrigeradoPct(h))}
