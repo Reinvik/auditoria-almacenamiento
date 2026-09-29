@@ -11,7 +11,8 @@ import {
   MapPin,
   ExternalLink,
   Cloud,
-  RefreshCw
+  RefreshCw,
+  LogOut
 } from 'lucide-react';
 import cialLogo from '../assets/cial-alimentos-logo.png';
 import { WarehouseSearchResult } from '../utils/warehouseSearch';
@@ -37,6 +38,8 @@ interface NavbarProps {
   onOpenOccupancy?: () => void;
   activeAuditorName?: string | null;
   syncStatus?: 'synced' | 'syncing' | 'offline' | 'error';
+  currentUser?: any;
+  onLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -59,6 +62,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenOccupancy,
   activeAuditorName,
   syncStatus = 'synced',
+  currentUser,
+  onLogout,
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
@@ -168,6 +173,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Upload className="w-4 h-4" />
             </button>
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="p-1.5 rounded-lg bg-red-900/60 border border-red-500/50 text-red-200 hover:text-white"
+                title="Cerrar Sesión"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -429,6 +443,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Upload className="w-3.5 h-3.5" />
               <span>Cargar Data SAP</span>
             </button>
+
+            {/* Logout Button */}
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-[#08482a] hover:bg-rose-900 border border-emerald-700/60 hover:border-rose-500 text-emerald-200 hover:text-white shadow-sm transition-all cursor-pointer"
+                title={currentUser?.email ? `Cerrar Sesión (${currentUser.email})` : 'Cerrar Sesión'}
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden xl:inline">{currentUser?.email?.split('@')[0] || 'Salir'}</span>
+              </button>
+            )}
           </div>
 
         </div>

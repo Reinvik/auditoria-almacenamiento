@@ -47,6 +47,7 @@ import {
   syncRackWithCloud,
   syncAisleWithCloud
 } from './services/supabaseService';
+import { supabase } from './lib/supabase';
 
 const LOCAL_STORAGE_STOCK_KEY = 'auditoria_almacenamiento_stock_v3';
 const LOCAL_STORAGE_AUDIT_KEY = 'auditoria_almacenamiento_audit_v2';
@@ -54,8 +55,7 @@ const LOCAL_STORAGE_ZONE_KEY = 'auditoria_almacenamiento_zone_v1';
 const LOCAL_STORAGE_AUDITOR_ID_KEY = 'auditoria_almacenamiento_my_auditor_id';
 const LOCAL_STORAGE_WORKLOAD_KEY = 'auditoria_almacenamiento_workload_v3';
 
-
-export default function App() {
+export default function App({ currentUser }: { currentUser?: any } = {}) {
 
   // 1. Stock Data
   const [stockData, setStockData] = useState<StockItem[]>(() => {
@@ -686,6 +686,8 @@ export default function App() {
         onOpenOccupancy={() => setViewMode('occupancy_report')}
         activeAuditorName={currentAuditorAssignment?.name}
         syncStatus={syncStatus}
+        currentUser={currentUser}
+        onLogout={() => supabase.auth.signOut()}
       />
 
       {/* Rack Selector & View Mode Switcher */}

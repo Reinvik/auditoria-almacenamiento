@@ -68,6 +68,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
 
   // 3. Historial de ocupación diario con persistencia local y en Supabase
   const [history, setHistory] = useState<OccupancyHistoryPoint[]>(() => getOccupancyHistory());
+  const [timeframeFilter, setTimeframeFilter] = useState<'SEPTEMBER' | 'LAST_15' | 'ALL'>('SEPTEMBER');
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [selectedFilter, setSelectedFilter] = useState<'ALL' | 'CONGELADOS' | 'REFRIGERADOS'>('ALL');
   const [showRackMatrix, setShowRackMatrix] = useState<boolean>(false);
@@ -89,24 +90,21 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
         const localData = getOccupancyHistory();
 
         if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
-          // Si el navegador actual tiene fechas nuevas que aún no estaban en la nube,
-          // combinamos ambos sin perder nada y mantenemos las últimas 15 fechas
+          // Combinar historial de la nube con local sin perder registros
           const merged = mergeOccupancyHistories(cloudData, localData);
-          const limited = merged.length > 15 ? merged.slice(-15) : merged;
-          setHistory(limited);
-          saveOccupancyHistory(limited);
+          setHistory(merged);
+          saveOccupancyHistory(merged);
           setSyncStatus('synced');
 
-          if (merged.length !== limited.length || merged.length > cloudData.length) {
-            await saveOccupancyHistoryToSupabase(limited);
+          if (merged.length > cloudData.length) {
+            await saveOccupancyHistoryToSupabase(merged);
           }
         } else {
-          // Si la nube aún no tiene registros, inicializarla con el historial local (máx 15)
+          // Si la nube aún no tiene registros, inicializarla con el historial local
           if (localData && localData.length > 0) {
-            const limited = localData.length > 15 ? localData.slice(-15) : localData;
-            setHistory(limited);
-            saveOccupancyHistory(limited);
-            await saveOccupancyHistoryToSupabase(limited);
+            setHistory(localData);
+            saveOccupancyHistory(localData);
+            await saveOccupancyHistoryToSupabase(localData);
           }
           setSyncStatus('synced');
         }
@@ -124,9 +122,8 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
       if (Array.isArray(newRemoteHistory) && newRemoteHistory.length > 0) {
         setHistory(prev => {
           const merged = mergeOccupancyHistories(prev, newRemoteHistory);
-          const limited = merged.length > 15 ? merged.slice(-15) : merged;
-          saveOccupancyHistory(limited);
-          return limited;
+          saveOccupancyHistory(merged);
+          return merged;
         });
         setSyncStatus('synced');
       }
@@ -146,17 +143,15 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
       const localData = getOccupancyHistory();
       if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
         const merged = mergeOccupancyHistories(cloudData, localData);
-        const limited = merged.length > 15 ? merged.slice(-15) : merged;
-        setHistory(limited);
-        saveOccupancyHistory(limited);
-        if (merged.length !== limited.length || merged.length > cloudData.length) {
-          await saveOccupancyHistoryToSupabase(limited);
+        setHistory(merged);
+        saveOccupancyHistory(merged);
+        if (merged.length > cloudData.length) {
+          await saveOccupancyHistoryToSupabase(merged);
         }
       } else if (localData.length > 0) {
-        const limited = localData.length > 15 ? localData.slice(-15) : localData;
-        setHistory(limited);
-        saveOccupancyHistory(limited);
-        await saveOccupancyHistoryToSupabase(limited);
+        setHistory(localData);
+        saveOccupancyHistory(localData);
+        await saveOccupancyHistoryToSupabase(localData);
       }
       setSyncStatus('synced');
     } catch {
@@ -242,11 +237,6 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
       updated = [...history, newPoint];
     }
 
-    // Mantener las últimas 15 fechas en el historial
-    if (updated.length > 15) {
-      updated = updated.slice(-15);
-    }
-
     setHistory(updated);
     saveOccupancyHistory(updated);
     setSavedFeedback(true);
@@ -258,10 +248,10 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
     setSyncStatus(ok ? 'synced' : 'error');
   };
 
-  // Restablecer al historial oficial inicial (últimas 15 fechas)
+  // Restablecer al historial oficial inicial de CIAL (26 fechas registradas)
   const handleResetHistory = async () => {
-    if (window.confirm('¿Deseas restablecer el historial a las últimas 15 fechas oficiales en todos los PCs?')) {
-      const resetSeries = INITIAL_OCCUPANCY_HISTORY.slice(-15);
+    if (window.confirm('¿Deseas restablecer el historial a las 26 fechas oficiales de CIAL en todos los PCs?')) {
+      const resetSeries = [...INITIAL_OCCUPANCY_HISTORY];
       setHistory(resetSeries);
       saveOccupancyHistory(resetSeries);
       setSyncStatus('syncing');
@@ -282,8 +272,31 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
 
   // ══════════════════════════════════════════════════════════════════════════
   // DIMENSIONES Y MATEMÁTICAS DEL GRÁFICO SVG
-  // El gráfico mantiene estrictamente las últimas 15 fechas registradas con espaciado amplio
-  const chartHistory = history.slice(-15);
+  // Filtro de temporalidad para priorizar las fechas más recientes (Septiembre / Últimas 15 / Todas)
+  const septemberPoints = useMemo(() => {
+    return history.filter(h => h.date.toLowerCase().includes('sept') || (h.timestamp && new Date(h.timestamp).getMonth() === 8));
+  }, [history]);
+
+  const chartHistory = useMemo(() => {
+    if (timeframeFilter === 'SEPTEMBER') {
+      return septemberPoints.length > 0 ? septemberPoints : history.slice(-15);
+    }
+    if (timeframeFilter === 'LAST_15') {
+      return history.slice(-15);
+    }
+    return history;
+  }, [history, timeframeFilter, septemberPoints]);
+
+  const chartTitle = useMemo(() => {
+    if (timeframeFilter === 'SEPTEMBER') {
+      return `EVOLUCIÓN HISTÓRICA DE OCUPACIÓN (SEPTIEMBRE - ${chartHistory.length} FECHAS)`;
+    }
+    if (timeframeFilter === 'LAST_15') {
+      return `EVOLUCIÓN HISTÓRICA DE OCUPACIÓN (ÚLTIMAS ${chartHistory.length} FECHAS)`;
+    }
+    return `EVOLUCIÓN HISTÓRICA DE OCUPACIÓN (${chartHistory.length} FECHAS REGISTRADAS)`;
+  }, [timeframeFilter, chartHistory.length]);
+
   const pointsCount = chartHistory.length;
   const minPointSpacing = 65;
   const paddingLeft = 70;
@@ -1115,12 +1128,52 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
 
       {/* 3. GRÁFICO DE LÍNEAS OFICIAL CIAL (Idéntico a Imagen 2) */}
       <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-        {/* Encabezado del Gráfico con Leyenda idéntica a Imagen 2 */}
+        {/* Encabezado del Gráfico con Selector de Rango Temporal y Leyenda */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-100">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="text-xs font-black text-slate-800 uppercase tracking-wide">
-              Evolución Histórica de Ocupación ({chartHistory.length} fechas registradas)
+              {chartTitle}
             </span>
+
+            {/* Selector de Rango Temporal para priorizar fechas recientes */}
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs font-bold text-slate-600 border border-slate-200/70">
+              <button
+                type="button"
+                onClick={() => setTimeframeFilter('SEPTEMBER')}
+                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                  timeframeFilter === 'SEPTEMBER'
+                    ? 'bg-emerald-700 text-white shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Mostrar únicamente las fechas de Septiembre"
+              >
+                Solo Septiembre ({septemberPoints.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setTimeframeFilter('LAST_15')}
+                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                  timeframeFilter === 'LAST_15'
+                    ? 'bg-emerald-700 text-white shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Mostrar las últimas 15 fechas registradas"
+              >
+                Últimas 15
+              </button>
+              <button
+                type="button"
+                onClick={() => setTimeframeFilter('ALL')}
+                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                  timeframeFilter === 'ALL'
+                    ? 'bg-emerald-700 text-white shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Mostrar todo el historial registrado (27 fechas)"
+              >
+                Completo ({history.length})
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -1172,7 +1225,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                 fill="#1e293b"
                 letterSpacing="0.04em"
               >
-                EVOLUCIÓN HISTÓRICA DE OCUPACIÓN ({chartHistory.length} FECHAS REGISTRADAS)
+                {chartTitle}
               </text>
 
               {/* Leyenda en la imagen exportada */}

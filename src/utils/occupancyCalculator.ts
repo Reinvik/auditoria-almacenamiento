@@ -201,9 +201,13 @@ export const INITIAL_OCCUPANCY_HISTORY: OccupancyHistoryPoint[] = [
   { id: '17', date: '04-sept', timestamp: '2026-09-04T08:00:00.000Z', congeladoPct: 74.5, refrigeradoPct: 78.3, totalPct: 77.5 },
   { id: '18', date: '07-sept', timestamp: '2026-09-07T08:00:00.000Z', congeladoPct: 79.7, refrigeradoPct: 89.7, totalPct: 87.6 },
   { id: '19', date: '08-sept', timestamp: '2026-09-08T08:00:00.000Z', congeladoPct: 77.6, refrigeradoPct: 86.9, totalPct: 85.0 },
-  { id: '20', date: '14-sept', timestamp: '2026-09-14T08:00:00.000Z', congeladoPct: 82.0, refrigeradoPct: 88.4, totalPct: 87.2, excelCongeladoPct: 82.03, excelRefrigeradoPct: 88.45, excelTotalPct: 87.16 },
+  { id: '20', date: '14-sept', timestamp: '2026-09-14T08:00:00.000Z', congeladoPct: 82.0, refrigeradoPct: 88.5, totalPct: 87.2, excelCongeladoPct: 82.03, excelRefrigeradoPct: 88.45, excelTotalPct: 87.16 },
   { id: '21', date: '17-sept', timestamp: '2026-09-17T08:00:00.000Z', congeladoPct: 80.8, refrigeradoPct: 78.6, totalPct: 79.0, excelCongeladoPct: 80.76, excelRefrigeradoPct: 78.57, excelTotalPct: 79.01 },
   { id: '22', date: '21-sept', timestamp: '2026-09-21T08:00:00.000Z', congeladoPct: 80.2, refrigeradoPct: 75.8, totalPct: 76.7, excelCongeladoPct: 80.18, excelRefrigeradoPct: 75.77, excelTotalPct: 76.65 },
+  { id: '23', date: '22-sept', timestamp: '2026-09-22T08:00:00.000Z', congeladoPct: 76.8, refrigeradoPct: 62.6, totalPct: 65.5, excelCongeladoPct: 76.8, excelRefrigeradoPct: 62.6, excelTotalPct: 65.5 },
+  { id: '24', date: '23-sept', timestamp: '2026-09-23T08:00:00.000Z', congeladoPct: 79.0, refrigeradoPct: 63.9, totalPct: 66.9, excelCongeladoPct: 79.0, excelRefrigeradoPct: 63.9, excelTotalPct: 66.9 },
+  { id: '25', date: '24-sept', timestamp: '2026-09-24T08:00:00.000Z', congeladoPct: 79.6, refrigeradoPct: 63.9, totalPct: 67.1, excelCongeladoPct: 79.6, excelRefrigeradoPct: 63.9, excelTotalPct: 67.1 },
+  { id: '26', date: '28-sept', timestamp: '2026-09-28T08:00:00.000Z', congeladoPct: 81.8, refrigeradoPct: 70.8, totalPct: 73.0, excelCongeladoPct: 81.8, excelRefrigeradoPct: 70.8, excelTotalPct: 73.0 },
 ];
 
 /**
