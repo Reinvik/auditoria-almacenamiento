@@ -395,15 +395,57 @@ export function calculateWarehouseOccupancy(
   };
 }
 
+export const MONTH_MAP: Record<string, number> = {
+  ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5,
+  jul: 6, ago: 7, sep: 8, sept: 8, oct: 9, nov: 10, dic: 11
+};
+
+/**
+ * Obtiene el valor numérico en milisegundos de un punto histórico para ordenamiento exacto.
+ */
+export function getPointTimestamp(pt: OccupancyHistoryPoint): number {
+  if (pt.timestamp) {
+    const t = new Date(pt.timestamp).getTime();
+    if (!isNaN(t)) return t;
+  }
+  if (pt.date) {
+    const parts = pt.date.toLowerCase().split('-');
+    if (parts.length === 2) {
+      const d = parseInt(parts[0], 10);
+      const m = MONTH_MAP[parts[1]];
+      if (!isNaN(d) && m !== undefined) {
+        return new Date(2026, m, d, 8, 0, 0).getTime();
+      }
+    }
+  }
+  return 0;
+}
+
+/**
+ * Ordena un conjunto de puntos de historial por fecha cronológica.
+ * direction 'ASC': de más antiguas a más nuevas (agosto -> septiembre -> octubre)
+ * direction 'DESC': de más nuevas a más antiguas (octubre -> septiembre -> agosto)
+ */
+export function sortOccupancyHistory(
+  points: OccupancyHistoryPoint[],
+  direction: 'ASC' | 'DESC' = 'ASC'
+): OccupancyHistoryPoint[] {
+  return [...points].sort((a, b) => {
+    const diff = getPointTimestamp(a) - getPointTimestamp(b);
+    return direction === 'ASC' ? diff : -diff;
+  });
+}
+
 /**
  * Sanitiza el historial de ocupación asegurando que:
  * 1. Los puntos históricos oficiales de agosto y septiembre reflejen los valores certificados de Excel.
  * 2. Se remuevan snapshots duplicados erróneos (ej. 15-sept y 16-sept repetidos con 82.0%/88.5%).
  * 3. 17-sept y 21-sept contengan sus valores reales de evolución (80.8%/78.6% y 80.2%/75.8%).
+ * 4. El arreglo resultante siempre esté estrictamente ordenado cronológicamente (ASC).
  */
 export function sanitizeOccupancyHistory(points: OccupancyHistoryPoint[]): OccupancyHistoryPoint[] {
   if (!Array.isArray(points) || points.length === 0) {
-    return INITIAL_OCCUPANCY_HISTORY;
+    return sortOccupancyHistory(INITIAL_OCCUPANCY_HISTORY, 'ASC');
   }
 
   const officialMap = new Map<string, OccupancyHistoryPoint>();
@@ -439,7 +481,7 @@ export function sanitizeOccupancyHistory(points: OccupancyHistoryPoint[]): Occup
     result.push(officialMap.get('21-sept')!);
   }
 
-  return result;
+  return sortOccupancyHistory(result, 'ASC');
 }
 
 /**
@@ -457,7 +499,7 @@ export function getOccupancyHistory(): OccupancyHistoryPoint[] {
   } catch (e) {
     console.error('Error loading occupancy history', e);
   }
-  return INITIAL_OCCUPANCY_HISTORY;
+  return sortOccupancyHistory(INITIAL_OCCUPANCY_HISTORY, 'ASC');
 }
 
 /**
@@ -504,7 +546,7 @@ export function mergeOccupancyHistories(
     }
   }
 
-  return sanitizeOccupancyHistory(Array.from(map.values()));
+  return sortOccupancyHistory(sanitizeOccupancyHistory(Array.from(map.values())), 'ASC');
 }
 
 

@@ -6,6 +6,7 @@ import {
   getOccupancyHistory, 
   saveOccupancyHistory, 
   mergeOccupancyHistories,
+  sortOccupancyHistory,
   formatCurrentDateLabel,
   OccupancyHistoryPoint,
   INITIAL_OCCUPANCY_HISTORY,
@@ -40,7 +41,8 @@ import {
   Mail,
   Send,
   Cloud,
-  RefreshCw
+  RefreshCw,
+  ArrowUpDown
 } from 'lucide-react';
 
 interface OccupancyReportViewProps {
@@ -68,7 +70,8 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
 
   // 3. Historial de ocupación diario con persistencia local y en Supabase
   const [history, setHistory] = useState<OccupancyHistoryPoint[]>(() => getOccupancyHistory());
-  const [timeframeFilter, setTimeframeFilter] = useState<'SEPTEMBER' | 'LAST_15' | 'ALL'>('SEPTEMBER');
+  const [timeframeFilter, setTimeframeFilter] = useState<'OCTOBER' | 'SEPTEMBER' | 'LAST_15' | 'ALL'>('LAST_15');
+  const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('ASC');
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [selectedFilter, setSelectedFilter] = useState<'ALL' | 'CONGELADOS' | 'REFRIGERADOS'>('ALL');
   const [showRackMatrix, setShowRackMatrix] = useState<boolean>(false);
@@ -236,6 +239,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
     } else {
       updated = [...history, newPoint];
     }
+    updated = sortOccupancyHistory(updated, 'ASC');
 
     setHistory(updated);
     saveOccupancyHistory(updated);
@@ -272,30 +276,62 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
 
   // ══════════════════════════════════════════════════════════════════════════
   // DIMENSIONES Y MATEMÁTICAS DEL GRÁFICO SVG
-  // Filtro de temporalidad para priorizar las fechas más recientes (Septiembre / Últimas 15 / Todas)
-  const septemberPoints = useMemo(() => {
-    return history.filter(h => h.date.toLowerCase().includes('sept') || (h.timestamp && new Date(h.timestamp).getMonth() === 8));
+  // 1. Historial base siempre ordenado cronológicamente de forma estricta (ASC: agosto -> septiembre -> octubre)
+  const sortedBaseHistory = useMemo(() => {
+    return sortOccupancyHistory(history, 'ASC');
   }, [history]);
 
-  const chartHistory = useMemo(() => {
+  // Puntos clasificados por mes
+  const octoberPoints = useMemo(() => {
+    return sortedBaseHistory.filter(h => {
+      const monthStr = (h.date || '').toLowerCase();
+      return monthStr.includes('oct') || (h.timestamp && new Date(h.timestamp).getMonth() === 9);
+    });
+  }, [sortedBaseHistory]);
+
+  const septemberPoints = useMemo(() => {
+    return sortedBaseHistory.filter(h => {
+      const monthStr = (h.date || '').toLowerCase();
+      return monthStr.includes('sep') || (h.timestamp && new Date(h.timestamp).getMonth() === 8);
+    });
+  }, [sortedBaseHistory]);
+
+  // 2. Selección según el rango temporal elegido
+  const filteredHistory = useMemo(() => {
+    if (timeframeFilter === 'OCTOBER') {
+      return octoberPoints.length > 0 ? octoberPoints : sortedBaseHistory.slice(-15);
+    }
     if (timeframeFilter === 'SEPTEMBER') {
-      return septemberPoints.length > 0 ? septemberPoints : history.slice(-15);
+      return septemberPoints.length > 0 ? septemberPoints : sortedBaseHistory.slice(-15);
     }
-    if (timeframeFilter === 'LAST_15') {
-      return history.slice(-15);
+    if (timeframeFilter === 'ALL') {
+      return sortedBaseHistory;
     }
-    return history;
-  }, [history, timeframeFilter, septemberPoints]);
+    // LAST_15 por defecto: estrictamente las 15 fechas más recientes
+    return sortedBaseHistory.slice(-15);
+  }, [sortedBaseHistory, timeframeFilter, octoberPoints, septemberPoints]);
+
+  // 3. Aplicar orden de presentación en el gráfico (ASC: antiguas -> nuevas, DESC: nuevas -> antiguas)
+  const chartHistory = useMemo(() => {
+    if (sortOrder === 'DESC') {
+      return [...filteredHistory].reverse();
+    }
+    return filteredHistory;
+  }, [filteredHistory, sortOrder]);
 
   const chartTitle = useMemo(() => {
+    const orderTxt = sortOrder === 'ASC' ? 'MÁS ANTIGUAS A MÁS NUEVAS' : 'MÁS NUEVAS A MÁS ANTIGUAS';
+    if (timeframeFilter === 'OCTOBER') {
+      return `EVOLUCIÓN HISTÓRICA DE OCUPACIÓN (OCTUBRE - ${chartHistory.length} FECHAS • ${orderTxt})`;
+    }
     if (timeframeFilter === 'SEPTEMBER') {
-      return `EVOLUCIÓN HISTÓRICA DE OCUPACIÓN (SEPTIEMBRE - ${chartHistory.length} FECHAS)`;
+      return `EVOLUCIÓN HISTÓRICA DE OCUPACIÓN (SEPTIEMBRE - ${chartHistory.length} FECHAS • ${orderTxt})`;
     }
     if (timeframeFilter === 'LAST_15') {
-      return `EVOLUCIÓN HISTÓRICA DE OCUPACIÓN (ÚLTIMAS ${chartHistory.length} FECHAS)`;
+      return `EVOLUCIÓN HISTÓRICA DE OCUPACIÓN (ÚLTIMAS ${chartHistory.length} FECHAS • ${orderTxt})`;
     }
-    return `EVOLUCIÓN HISTÓRICA DE OCUPACIÓN (${chartHistory.length} FECHAS REGISTRADAS)`;
-  }, [timeframeFilter, chartHistory.length]);
+    return `EVOLUCIÓN HISTÓRICA DE OCUPACIÓN (${chartHistory.length} FECHAS REGISTRADAS • ${orderTxt})`;
+  }, [timeframeFilter, chartHistory.length, sortOrder]);
 
   const pointsCount = chartHistory.length;
   const minPointSpacing = 65;
@@ -1128,9 +1164,9 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
 
       {/* 3. GRÁFICO DE LÍNEAS OFICIAL CIAL (Idéntico a Imagen 2) */}
       <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-        {/* Encabezado del Gráfico con Selector de Rango Temporal y Leyenda */}
+        {/* Encabezado del Gráfico con Selector de Rango Temporal, Orden y Leyenda */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-100">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             <span className="text-xs font-black text-slate-800 uppercase tracking-wide">
               {chartTitle}
             </span>
@@ -1139,28 +1175,44 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
             <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs font-bold text-slate-600 border border-slate-200/70">
               <button
                 type="button"
-                onClick={() => setTimeframeFilter('SEPTEMBER')}
-                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                  timeframeFilter === 'SEPTEMBER'
-                    ? 'bg-emerald-700 text-white shadow-xs font-black'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="Mostrar únicamente las fechas de Septiembre"
-              >
-                Solo Septiembre ({septemberPoints.length})
-              </button>
-              <button
-                type="button"
                 onClick={() => setTimeframeFilter('LAST_15')}
                 className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                   timeframeFilter === 'LAST_15'
                     ? 'bg-emerald-700 text-white shadow-xs font-black'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
-                title="Mostrar las últimas 15 fechas registradas"
+                title="Mostrar las últimas 15 fechas registradas (más recientes)"
               >
                 Últimas 15
               </button>
+              {octoberPoints.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setTimeframeFilter('OCTOBER')}
+                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                    timeframeFilter === 'OCTOBER'
+                      ? 'bg-emerald-700 text-white shadow-xs font-black'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="Mostrar únicamente las fechas de Octubre"
+                >
+                  Octubre ({octoberPoints.length})
+                </button>
+              )}
+              {septemberPoints.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setTimeframeFilter('SEPTEMBER')}
+                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                    timeframeFilter === 'SEPTEMBER'
+                      ? 'bg-emerald-700 text-white shadow-xs font-black'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="Mostrar únicamente las fechas de Septiembre"
+                >
+                  Septiembre ({septemberPoints.length})
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setTimeframeFilter('ALL')}
@@ -1169,9 +1221,39 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
                     ? 'bg-emerald-700 text-white shadow-xs font-black'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
-                title="Mostrar todo el historial registrado (27 fechas)"
+                title="Mostrar todo el historial registrado"
               >
-                Completo ({history.length})
+                Completo ({sortedBaseHistory.length})
+              </button>
+            </div>
+
+            {/* Selector de Orden de Fechas: De más antiguas a más nuevas / De más nuevas a más antiguas */}
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs font-bold text-slate-600 border border-slate-200/70">
+              <button
+                type="button"
+                onClick={() => setSortOrder('ASC')}
+                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
+                  sortOrder === 'ASC'
+                    ? 'bg-blue-700 text-white shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Ordenar fechas de más antiguas a más nuevas (Cronológico habitual de izquierda a derecha)"
+              >
+                <ArrowUpDown className="w-3 h-3 text-current" />
+                <span>Más antiguas a más nuevas</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortOrder('DESC')}
+                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
+                  sortOrder === 'DESC'
+                    ? 'bg-blue-700 text-white shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Ordenar fechas de más nuevas a más antiguas (Fechas recientes primero a la izquierda)"
+              >
+                <ArrowUpDown className="w-3 h-3 text-current" />
+                <span>Más nuevas a más antiguas</span>
               </button>
             </div>
           </div>
@@ -1563,7 +1645,7 @@ export const OccupancyReportView: React.FC<OccupancyReportViewProps> = ({
         isOpen={isEmailModalOpen}
         onClose={() => setIsEmailModalOpen(false)}
         svgElement={svgRef.current}
-        lastDateLabel={chartHistory[chartHistory.length - 1]?.date}
+        lastDateLabel={sortedBaseHistory[sortedBaseHistory.length - 1]?.date || chartHistory[chartHistory.length - 1]?.date}
       />
     </div>
   );
